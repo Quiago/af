@@ -93,8 +93,6 @@ const INITIAL_RECS: Recommendation[] = [
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function RecommendationsPanel() {
-  const kpis                    = useDashboardStore((s) => s.snapshot?.kpis)
-  const history                 = useDashboardStore((s) => s.history)
   const setSimulationProjection = useDashboardStore((s) => s.setSimulationProjection)
   const applyRecommendation     = useDashboardStore((s) => s.applyRecommendation)
   const appliedRecIds           = useDashboardStore((s) => s.appliedRecIds)
@@ -107,18 +105,6 @@ export function RecommendationsPanel() {
   // rejection flow: id → 'pending' | reason string
   const [rejecting, setRejecting] = useState<Record<string, string | null>>({})
 
-  // Trend vs first historical snapshot
-  const baseline = history.length > 8 ? history[0].kpis : null
-  function trendPct(current: number | null | undefined, base: number | null | undefined): string | null {
-    if (current == null || base == null || base === 0) return null
-    const pct = ((current - base) / base) * 100
-    return (pct > 0 ? '+' : '') + pct.toFixed(1) + '%'
-  }
-  function trendClass(current: number | null | undefined, base: number | null | undefined, lowerBetter = true): 'trend--good' | 'trend--bad' | '' {
-    if (current == null || base == null || base === 0) return ''
-    const improved = lowerBetter ? current < base : current > base
-    return improved ? 'trend--good' : 'trend--bad'
-  }
 
 
   function handleSimulate(rec: Recommendation) {

@@ -1,0 +1,1 @@
+{"AirZoneTemperature[1]": ["zon_reaTRooAir_y"], "GasPower": ["fcu_reaPHea_y"], "ElectricPower": ["fcu_reaPCoo_y", "fcu_reaPFan_y"], "CO2Concentration[1]": ["zon_reaCO2RooAir_y"]}

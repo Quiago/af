@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>INAIA — Building Intelligence OS</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      #07090F;
+  --panel:   #0C1220;
+  --card:    #101826;
+  --hover:   #141E2E;
+  --active:  #0D1F3C;
+  --border:  rgba(0,200,150,0.12);
+  --bdim:    rgba(255,255,255,0.06);
+  --accent:  #00C896;
+  --adim:    rgba(0,200,150,0.12);
+  --blue:    #3B82F6;
+  --amber:   #F59E0B;
+  --red:     #EF4444;
+  --t1:      #E2EAF2;
+  --t2:      #6B7E96;
+  --t3:      #3A4A5C;
+  --mono:    'IBM Plex Mono', monospace;
+  --sans:    'IBM Plex Sans', sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;}
+body{background:var(--bg);color:var(--t1);font-family:var(--sans);display:flex;}
+
+/* ─── SIDEBAR ─── */
+.sb{width:50px;background:var(--panel);border-right:1px solid var(--bdim);display:flex;flex-direction:column;transition:width .18s ease;flex-shrink:0;overflow:hidden;z-index:20;}
+.sb:hover{width:204px;}
+.sb-logo{padding:11px 10px;border-bottom:1px solid var(--bdim);display:flex;align-items:center;gap:9px;min-height:48px;}
+.sb-mark{width:28px;height:28px;background:var(--accent);border-radius:5px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:600;color:#07090F;flex-shrink:0;}
+.sb-word{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--t1);white-space:nowrap;opacity:0;transition:opacity .1s;}
+.sb:hover .sb-word{opacity:1;}
+.sb-nav{flex:1;padding:6px 0;display:flex;flex-direction:column;gap:1px;}
+.sb-sec{font-family:var(--mono);font-size:8px;letter-spacing:.14em;color:var(--t3);padding:10px 13px 3px;white-space:nowrap;opacity:0;transition:opacity .1s;}
+.sb:hover .sb-sec{opacity:1;}
+.sbi{display:flex;align-items:center;gap:9px;padding:8px 11px;cursor:pointer;border-left:2px solid transparent;transition:background .1s;min-height:38px;}
+.sbi:hover{background:var(--hover);}
+.sbi.on{background:var(--active);border-left-color:var(--accent);}
+.sbi.on .si{color:var(--accent);}
+.sbi.on .sl{color:var(--t1);}
+.si{width:28px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--t2);font-size:14px;}
+.sl{font-size:12px;color:var(--t2);white-space:nowrap;opacity:0;transition:opacity .1s;}
+.sb:hover .sl{opacity:1;}
+.sb-div{height:1px;background:var(--bdim);margin:3px 11px;}
+.sb-foot{padding:9px 11px;border-top:1px solid var(--bdim);display:flex;align-items:center;gap:9px;}
+.sb-av{width:26px;height:26px;background:var(--adim);border:1px solid var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:9px;color:var(--accent);flex-shrink:0;}
+.sb-who{opacity:0;transition:opacity .1s;}
+.sb:hover .sb-who{opacity:1;}
+.sb-nm{font-size:11px;color:var(--t1);white-space:nowrap;}
+.sb-rl{font-size:9px;color:var(--t3);white-space:nowrap;}
+
+/* ─── MAIN ─── */
+.main{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden;}
+
+/* ─── TOPBAR ─── */
+.topbar{height:48px;background:var(--panel);border-bottom:1px solid var(--bdim);display:flex;align-items:center;padding:0 16px;gap:10px;flex-shrink:0;}
+.tb-title{font-family:var(--mono);font-size:11px;color:var(--t2);}
+.tb-title b{color:var(--t1);font-weight:500;}
+.live-pill{display:flex;align-items:center;gap:5px;margin-left:auto;}
+.ldot{width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 7px var(--accent);animation:blink 2s infinite;}
+.llbl{font-family:var(--mono);font-size:9px;color:var(--accent);letter-spacing:.08em;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+/* ─── VIEWS ─── */
+.view{display:none;flex:1;overflow:hidden;min-height:0;}
+.view.on{display:flex;}
+
+/* ═══════════════════════════════
+   DASHBOARD — 20 / 60 / 20
+═══════════════════════════════ */
+.dash{flex-direction:row;overflow:hidden;}
+
+/* LEFT 20% — Setpoint recommendations */
+.rec-panel{width:20%;min-width:200px;max-width:280px;flex-shrink:0;border-right:1px solid var(--bdim);display:flex;flex-direction:column;overflow:hidden;}
+.rp-head{padding:11px 13px;border-bottom:1px solid var(--bdim);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.rp-title{font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:var(--t2);}
+.rp-count{font-family:var(--mono);font-size:9px;background:rgba(245,158,11,.15);color:var(--amber);padding:1px 5px;border-radius:8px;}
+
+/* KPI strip at top of rec panel */
+.kpi-strip{padding:10px 13px;border-bottom:1px solid var(--bdim);display:flex;flex-direction:column;gap:6px;flex-shrink:0;}
+.kpi-row{display:flex;align-items:center;justify-content:space-between;}
+.kpi-lbl{font-family:var(--mono);font-size:8px;letter-spacing:.08em;color:var(--t3);}
+.kpi-right{display:flex;align-items:center;gap:5px;}
+.kpi-val{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--t1);}
+.kpi-d{font-family:var(--mono);font-size:8px;}
+.kpi-d.r{color:var(--red);}
+.kpi-d.g{color:var(--accent);}
+
+/* Recommendations list */
+.rec-list{flex:1;overflow-y:auto;padding:8px;}
+.rec-list::-webkit-scrollbar{width:2px;}
+.rec-list::-webkit-scrollbar-thumb{background:var(--bdim);}
+
+.rec-card{background:var(--card);border:1px solid var(--bdim);border-radius:7px;margin-bottom:7px;overflow:hidden;transition:border-color .15s;}
+.rec-card:hover{border-color:rgba(0,200,150,.18);}
+.rec-top{padding:9px 10px 7px;}
+.rec-zone{font-family:var(--mono);font-size:8px;letter-spacing:.1em;display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;}
+.rec-zone-name{color:var(--accent);}
+.rec-sev{font-size:8px;padding:1px 5px;border-radius:6px;font-family:var(--mono);}
+.rec-sev.r{background:rgba(239,68,68,.15);color:var(--red);}
+.rec-sev.a{background:rgba(245,158,11,.15);color:var(--amber);}
+.rec-reason{font-size:10px;color:var(--t2);line-height:1.5;margin-bottom:8px;}
+
+/* Current → Recommended change */
+.rec-change{display:flex;align-items:center;gap:6px;padding:6px 8px;background:var(--panel);border-radius:5px;margin-bottom:7px;}
+.rc-block{flex:1;text-align:center;}
+.rc-label{font-family:var(--mono);font-size:7px;letter-spacing:.08em;color:var(--t3);margin-bottom:2px;}
+.rc-val{font-family:var(--mono);font-size:13px;font-weight:600;}
+.rc-val.cur{color:var(--t2);}
+.rc-val.rec{color:var(--accent);}
+.rc-arrow{font-size:14px;color:var(--accent);flex-shrink:0;}
+.rc-impact{font-family:var(--mono);font-size:8px;color:var(--accent);text-align:center;background:var(--adim);border-radius:3px;padding:2px 0;}
+
+/* Apply / Decline buttons */
+.rec-actions{display:flex;gap:5px;padding:7px 10px;border-top:1px solid var(--bdim);}
+.btn-apply{flex:1;padding:5px;background:var(--accent);border:none;border-radius:4px;font-family:var(--mono);font-size:9px;font-weight:600;color:#07090F;cursor:pointer;transition:opacity .1s;}
+.btn-apply:hover{opacity:.85;}
+.btn-decline{flex:1;padding:5px;background:transparent;border:1px solid var(--bdim);border-radius:4px;font-family:var(--mono);font-size:9px;color:var(--t3);cursor:pointer;transition:all .1s;}
+.btn-decline:hover{border-color:var(--red);color:var(--red);}
+
+/* CENTER 60% — Timeline with delta */
+.tl-panel{flex:1;display:flex;flex-direction:column;border-right:1px solid var(--bdim);min-width:0;overflow:hidden;}
+.tl-head{padding:10px 14px;border-bottom:1px solid var(--bdim);display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.tl-title{font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:var(--t2);}
+.leg-row{display:flex;gap:10px;margin-left:8px;}
+.leg{display:flex;align-items:center;gap:4px;font-size:9px;color:var(--t2);}
+.legdot{width:5px;height:5px;border-radius:50%;}
+.tabs{display:flex;gap:2px;margin-left:auto;}
+.tab{font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:2px;cursor:pointer;color:var(--t3);transition:all .1s;}
+.tab:hover{color:var(--t1);}
+.tab.on{background:var(--adim);border:1px solid var(--border);color:var(--accent);}
+.tl-chart{flex:1;position:relative;background:var(--bg);overflow:hidden;}
+.tl-svg{width:100%;height:100%;display:block;}
+
+/* RIGHT 20% — Heatmap */
+.heat-panel{width:20%;min-width:180px;max-width:260px;flex-shrink:0;display:flex;flex-direction:column;overflow:hidden;}
+.heat-head{padding:10px 12px;border-bottom:1px solid var(--bdim);display:flex;flex-direction:column;gap:5px;flex-shrink:0;}
+.heat-title{font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:var(--t2);}
+.heat-leg{display:flex;gap:5px;}
+.hleg{display:flex;align-items:center;gap:3px;font-size:8px;color:var(--t3);font-family:var(--mono);}
+.hswatch{width:7px;height:7px;border-radius:1px;}
+.grid-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:12px;}
+.tgrid{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:5px;width:100%;aspect-ratio:1;}
+.zc{border-radius:7px;padding:8px 6px;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer;transition:all .4s;position:relative;overflow:hidden;}
+.zc::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.05) 0%,transparent 60%);border-radius:inherit;}
+.zc.emp{background:transparent;border:1px dashed rgba(255,255,255,.04);cursor:default;}
+.zc.cold{background:#172D5E;border:1px solid rgba(59,130,246,.3);}
+.zc.ok  {background:#0A3328;border:1px solid rgba(0,200,150,.3);}
+.zc.warm{background:#312309;border:1px solid rgba(245,158,11,.3);}
+.zc.hot {background:#301010;border:1px solid rgba(239,68,68,.3);}
+.zn{font-family:var(--mono);font-size:8px;letter-spacing:.07em;color:rgba(255,255,255,.4);}
+.zt{font-family:var(--mono);font-size:17px;font-weight:600;color:var(--t1);line-height:1;}
+.zd{font-family:var(--mono);font-size:7px;}
+.zd.ab{color:var(--red);}
+.zd.bl{color:var(--blue);}
+.zd.ok{color:var(--accent);}
+
+/* ═══════════════════════════════
+   BUILDING REPORT
+═══════════════════════════════ */
+.rpt-view{flex-direction:column;overflow-y:auto;padding:20px;gap:14px;}
+.rpt-view::-webkit-scrollbar{width:3px;}
+.rpt-view::-webkit-scrollbar-thumb{background:var(--bdim);}
+.pg-ey{font-family:var(--mono);font-size:8px;letter-spacing:.12em;color:var(--t3);}
+.pg-h{font-size:19px;font-weight:500;color:var(--t1);margin-top:2px;}
+.rpt-hdr{background:var(--panel);border:1px solid var(--bdim);border-radius:7px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;}
+.rpt-bld{font-size:16px;font-weight:500;color:var(--t1);}
+.rpt-m{font-size:10px;color:var(--t3);margin-top:3px;}
+.rpt-stamp{text-align:right;font-family:var(--mono);font-size:8px;color:var(--t3);line-height:2;}
+.rpt-stamp span{color:var(--accent);}
+.vs-grid{display:grid;grid-template-columns:1fr 32px 1fr;gap:10px;align-items:center;}
+.vc{background:var(--panel);border:1px solid var(--bdim);border-radius:7px;padding:14px 16px;}
+.vc.opt{border-color:rgba(0,200,150,.2);}
+.vc-h{font-family:var(--mono);font-size:8px;letter-spacing:.1em;color:var(--t3);margin-bottom:10px;}
+.vr{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--bdim);}
+.vr:last-child{border-bottom:none;}
+.vrl{font-size:10px;color:var(--t2);}
+.vrv{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--t1);}
+.vrv.s{color:var(--accent);}
+.va{text-align:center;font-size:18px;color:var(--accent);}
+.sbox{background:var(--panel);border:1px solid var(--bdim);border-radius:7px;overflow:hidden;}
+.sbox-h{padding:11px 14px;border-bottom:1px solid var(--bdim);display:flex;align-items:center;justify-content:space-between;}
+.sbox-t{font-family:var(--mono);font-size:9px;letter-spacing:.08em;color:var(--t2);}
+.phases{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:12px 14px 14px;}
+.ph{background:var(--card);border:1px solid var(--bdim);border-radius:7px;padding:14px;position:relative;}
+.ph-n{font-family:var(--mono);font-size:26px;font-weight:600;color:rgba(255,255,255,.06);position:absolute;top:8px;right:12px;}
+.ph-t{font-family:var(--mono);font-size:8px;letter-spacing:.1em;color:var(--accent);margin-bottom:4px;}
+.ph-ti{font-size:11px;font-weight:500;color:var(--t1);margin-bottom:5px;}
+.ph-d{font-size:10px;color:var(--t2);line-height:1.65;}
+.ph-du{margin-top:8px;font-family:var(--mono);font-size:8px;color:var(--t3);padding-top:7px;border-top:1px solid var(--bdim);}
+
+/* ═══════════════════════════════
+   PREDICTIVE MAINTENANCE
+═══════════════════════════════ */
+.maint{flex-direction:row;overflow:hidden;}
+.eq-col{width:220px;flex-shrink:0;border-right:1px solid var(--bdim);display:flex;flex-direction:column;overflow:hidden;}
+.eq-top{flex:0 0 38%;border-bottom:1px solid var(--bdim);padding:10px 12px;display:flex;flex-direction:column;gap:6px;}
+.eq-hdr{display:flex;align-items:center;gap:6px;}
+.eq-ico{width:26px;height:26px;background:var(--adim);border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;}
+.eq-nm{font-size:11px;font-weight:500;color:var(--t1);}
+.eq-sb{font-size:9px;color:var(--t3);}
+.hw{display:flex;align-items:center;gap:7px;}
+.aw{position:relative;width:38px;height:38px;flex-shrink:0;}
+.aw svg{transform:rotate(-90deg);}
+.an{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:var(--mono);font-size:11px;font-weight:600;color:var(--accent);}
+.ms{flex:1;display:flex;flex-direction:column;gap:4px;}
+.mr{display:flex;align-items:center;gap:4px;}
+.ml{font-size:9px;color:var(--t2);flex:1;}
+.mb{width:36px;height:3px;background:var(--bdim);border-radius:2px;overflow:hidden;}
+.mf{height:100%;border-radius:2px;}
+.mf.g{background:var(--accent);}
+.mf.a{background:var(--amber);}
+.mv{font-family:var(--mono);font-size:8px;color:var(--t2);min-width:22px;text-align:right;}
+.eq-ft{display:flex;align-items:center;justify-content:space-between;margin-top:2px;}
+.sv{font-size:9px;color:var(--t3);}
+.sv span{color:var(--t2);}
+.bgrp{display:flex;gap:3px;}
+.bsm{font-size:9px;font-family:var(--mono);padding:2px 5px;border:1px solid var(--bdim);border-radius:3px;background:transparent;color:var(--t2);cursor:pointer;}
+.bsm:hover{border-color:var(--border);color:var(--accent);}
+.tree{flex:1;overflow-y:auto;padding:4px 0;}
+.tree::-webkit-scrollbar{width:2px;}
+.tree::-webkit-scrollbar-thumb{background:var(--bdim);}
+.zr{display:flex;align-items:center;gap:5px;padding:4px 11px;cursor:pointer;}
+.zc2{font-size:8px;color:var(--t3);}
+.zl{font-family:var(--mono);font-size:8px;letter-spacing:.08em;color:var(--t3);}
+.za{margin-left:auto;font-size:7px;background:rgba(245,158,11,.15);color:var(--amber);padding:1px 4px;border-radius:5px;font-family:var(--mono);}
+.tr{display:flex;align-items:center;gap:6px;padding:5px 11px 5px 24px;cursor:pointer;transition:background .1s;border-left:2px solid transparent;}
+.tr:hover{background:var(--hover);}
+.tr.sel{background:var(--active);border-left-color:var(--accent);}
+.ti{font-size:10px;}
+.tin{flex:1;}
+.tn{font-size:10px;color:var(--t1);}
+.tm{font-size:8px;color:var(--t3);font-family:var(--mono);}
+.sd{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+.sd.ok{background:var(--accent);}
+.sd.wa{background:var(--amber);}
+.tl-col2{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+
+/* ─── AI BUBBLE ─── */
+.ai-bubble{position:fixed;bottom:20px;right:20px;z-index:100;}
+.ai-btn{width:46px;height:46px;background:var(--accent);border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 4px 20px rgba(0,200,150,.35);transition:all .2s;}
+.ai-btn:hover{transform:scale(1.08);box-shadow:0 6px 28px rgba(0,200,150,.5);}
+.ai-window{display:none;position:absolute;bottom:56px;right:0;width:320px;background:var(--panel);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,.6);overflow:hidden;flex-direction:column;}
+.ai-window.open{display:flex;}
+.ai-whead{padding:10px 13px;border-bottom:1px solid var(--bdim);display:flex;align-items:center;justify-content:space-between;}
+.ai-wtitle{font-family:var(--mono);font-size:10px;color:var(--accent);}
+.ai-wclose{background:none;border:none;color:var(--t3);cursor:pointer;font-size:14px;line-height:1;}
+.ai-wclose:hover{color:var(--t1);}
+.ai-msgs{height:240px;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;}
+.ai-msgs::-webkit-scrollbar{width:2px;}
+.ai-msgs::-webkit-scrollbar-thumb{background:var(--bdim);}
+.am{max-width:88%;display:flex;flex-direction:column;gap:2px;}
+.am.u{align-self:flex-end;}
+.am.a{align-self:flex-start;}
+.ab{padding:8px 10px;border-radius:7px;font-size:11px;line-height:1.6;}
+.am.u .ab{background:var(--adim);border:1px solid var(--border);color:var(--t1);}
+.am.a .ab{background:var(--card);border:1px solid var(--bdim);color:var(--t1);}
+.aw2{font-family:var(--mono);font-size:7px;color:var(--t3);}
+.am.u .aw2{text-align:right;}
+.ai-bar{padding:8px 10px;border-top:1px solid var(--bdim);display:flex;gap:6px;}
+.ai-in{flex:1;background:var(--card);border:1px solid var(--bdim);border-radius:5px;padding:6px 8px;font-size:11px;font-family:var(--sans);color:var(--t1);outline:none;}
+.ai-in::placeholder{color:var(--t3);}
+.ai-in:focus{border-color:var(--border);}
+.ai-send{width:28px;height:28px;background:var(--adim);border:1px solid var(--border);border-radius:5px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:12px;}
+.ai-send:hover{background:var(--accent);color:#07090F;}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sb">
+  <div class="sb-logo">
+    <div class="sb-mark">IN</div>
+    <span class="sb-word">INAIA Platform</span>
+  </div>
+  <div class="sb-nav">
+    <div class="sb-sec">PLATFORM</div>
+    <div class="sbi on" onclick="sv('dash',this)">
+      <div class="si">◈</div><span class="sl">Dashboard</span>
+    </div>
+    <div class="sbi" onclick="sv('report',this)">
+      <div class="si">▤</div><span class="sl">Building Report</span>
+    </div>
+    <div class="sb-div"></div>
+    <div class="sb-sec">OPERATIONS</div>
+    <div class="sbi" onclick="sv('maint',this)">
+      <div class="si">◎</div><span class="sl">Predictive Maint.</span>
+    </div>
+  </div>
+  <div class="sb-foot">
+    <div class="sb-av">CQ</div>
+    <div class="sb-who">
+      <div class="sb-nm">Carlos Q.</div>
+      <div class="sb-rl">Head of AI · Tripolar</div>
+    </div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="tb-title"><b id="vtitle">Dashboard</b> / 25hours Hotel Dubai One Central</div>
+    <div class="live-pill"><div class="ldot"></div><span class="llbl">LIVE</span></div>
+  </header>
+
+  <!-- ═══ DASHBOARD ═══ -->
+  <div class="view on dash" id="view-dash">
+
+    <!-- LEFT 20% — Recommendations -->
+    <div class="rec-panel">
+      <div class="rp-head">
+        <span class="rp-title">RECOMMENDATIONS</span>
+        <span class="rp-count">3 actions</span>
+      </div>
+
+      <!-- KPI Strip -->
+      <div class="kpi-strip">
+        <div class="kpi-row">
+          <span class="kpi-lbl">PUE</span>
+          <div class="kpi-right"><span class="kpi-val">1.57</span><span class="kpi-d r">+2.1%</span></div>
+        </div>
+        <div class="kpi-row">
+          <span class="kpi-lbl">ENERGY</span>
+          <div class="kpi-right"><span class="kpi-val">247 kWh</span><span class="kpi-d r">+32%</span></div>
+        </div>
+        <div class="kpi-row">
+          <span class="kpi-lbl">SAVINGS</span>
+          <div class="kpi-right"><span class="kpi-val" style="color:var(--accent)">AED 6,200/yr</span><span class="kpi-d g">↓18.3%</span></div>
+        </div>
+        <div class="kpi-row">
+          <span class="kpi-lbl">DISCOMFORT</span>
+          <div class="kpi-right"><span class="kpi-val">3.52 Kh</span><span class="kpi-d r">+235%</span></div>
+        </div>
+      </div>
+
+      <!-- Recommendation cards -->
+      <div class="rec-list">
+
+        <!-- Rec 1 -->
+        <div class="rec-card">
+          <div class="rec-top">
+            <div class="rec-zone">
+              <span class="rec-zone-name">ZONE CORE</span>
+              <span class="rec-sev r">HIGH IMPACT</span>
+            </div>
+            <div class="rec-reason">Fan active at full speed during unoccupied hours — CO₂ at 415 ppm, no occupancy detected.</div>
+            <div class="rec-change">
+              <div class="rc-block">
+                <div class="rc-label">CURRENT</div>
+                <div class="rc-val cur">100%</div>
+                <div style="font-family:var(--mono);font-size:7px;color:var(--t3)">damper</div>
+              </div>
+              <div class="rc-arrow">→</div>
+              <div class="rc-block">
+                <div class="rc-label">RECOMMENDED</div>
+                <div class="rc-val rec">15%</div>
+                <div style="font-family:var(--mono);font-size:7px;color:var(--t3)">damper</div>
+              </div>
+            </div>
+            <div class="rc-impact">↓ 2.1 kWh/day · AED 287/yr</div>
+          </div>
+          <div class="rec-actions">
+            <button class="btn-apply" onclick="applyRec(this,'rec1')">✓ Apply</button>
+            <button class="btn-decline" onclick="declineRec(this)">✕ Decline</button>
+          </div>
+        </div>
+
+        <!-- Rec 2 -->
+        <div class="rec-card">
+          <div class="rec-top">
+            <div class="rec-zone">
+              <span class="rec-zone-name">ZONE SOUTH</span>
+              <span class="rec-sev a">MEDIUM</span>
+            </div>
+            <div class="rec-reason">Overcooling 1.8°C below lower setpoint during peak electricity price window (14:00–19:00).</div>
+            <div class="rec-change">
+              <div class="rc-block">
+                <div class="rc-label">CURRENT</div>
+                <div class="rc-val cur">21°C</div>
+                <div style="font-family:var(--mono);font-size:7px;color:var(--t3)">cooling SP</div>
+              </div>
+              <div class="rc-arrow">→</div>
+              <div class="rc-block">
+                <div class="rc-label">RECOMMENDED</div>
+                <div class="rc-val rec">23°C</div>
+                <div style="font-family:var(--mono);font-size:7px;color:var(--t3)">cooling SP</div>
+              </div>
+            </div>
+            <div class="rc-impact">↓ 1.4 kWh/day · AED 192/yr</div>
+          </div>
+          <div class="rec-actions">
+            <button class="btn-apply" onclick="applyRec(this,'rec2')">✓ Apply</button>
+            <button class="btn-decline" onclick="declineRec(this)">✕ Decline</button>
+          </div>
+        </div>
+
+        <!-- Rec 3 -->
+        <div class="rec-card">
+          <div class="rec-top">
+            <div class="rec-zone">
+              <span class="rec-zone-name">ZONE NORTH</span>
+              <span class="rec-sev a">MEDIUM</span>
+            </div>
+            <div class="rec-reason">Outside air damper 40% above IAQ minimum — CO₂ at 420 ppm, threshold is 800 ppm.</div>
+            <div class="rec-change">
+              <div class="rc-block">
+                <div class="rc-label">CURRENT</div>
+                <div class="rc-val cur">75%</div>
+                <div style="font-family:var(--mono);font-size:7px;color:var(--t3)">OA damper</div>
+              </div>
+              <div class="rc-arrow">→</div>
+              <div class="rc-block">
+                <div class="rc-label">RECOMMENDED</div>
+                <div class="rc-val rec">45%</div>
+                <div style="font-family:var(--mono);font-size:7px;color:var(--t3)">OA damper</div>
+              </div>
+            </div>
+            <div class="rc-impact">↓ 0.9 kWh/day · AED 123/yr</div>
+          </div>
+          <div class="rec-actions">
+            <button class="btn-apply" onclick="applyRec(this,'rec3')">✓ Apply</button>
+            <button class="btn-decline" onclick="declineRec(this)">✕ Decline</button>
+          </div>
+        </div>
+
+      </div><!-- /rec-list -->
+    </div><!-- /rec-panel -->
+
+    <!-- CENTER 60% — Timeline with delta -->
+    <div class="tl-panel">
+      <div class="tl-head">
+        <span class="tl-title">ENERGY CONSUMPTION — BASELINE vs INAIA OPTIMIZER</span>
+        <div class="leg-row">
+          <div class="leg"><div class="legdot" style="background:rgba(255,255,255,.35)"></div>Baseline</div>
+          <div class="leg"><div class="legdot" style="background:var(--accent)"></div>INAIA</div>
+          <div class="leg"><div class="legdot" style="background:var(--amber)"></div>Δ Saving</div>
+        </div>
+        <div class="tabs">
+          <div class="tab">1h</div>
+          <div class="tab on">6h</div>
+          <div class="tab">24h</div>
+          <div class="tab">1M</div>
+        </div>
+      </div>
+      <div class="tl-chart">
+        <svg class="tl-svg" id="tl-svg" viewBox="0 0 800 300" preserveAspectRatio="none">
+          <defs>
+            <pattern id="tgrid" width="80" height="50" patternUnits="userSpaceOnUse">
+              <path d="M80 0L0 0 0 50" fill="none" stroke="rgba(255,255,255,.025)" stroke-width="1"/>
+            </pattern>
+            <!-- Delta fill gradient between the two lines -->
+            <linearGradient id="deltaGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#F59E0B" stop-opacity=".35"/>
+              <stop offset="100%" stop-color="#F59E0B" stop-opacity=".05"/>
+            </linearGradient>
+          </defs>
+          <rect width="800" height="300" fill="url(#tgrid)"/>
+
+          <!-- Delta fill (area between baseline and optimizer) -->
+          <polygon id="delta-fill" fill="url(#deltaGrad)"/>
+
+          <!-- Baseline line -->
+          <polyline id="bl-line" fill="none" stroke="rgba(255,255,255,.30)" stroke-width="1.5" stroke-dasharray="5 3"/>
+
+          <!-- Optimizer line -->
+          <polyline id="opt-line" fill="none" stroke="#00C896" stroke-width="2"/>
+
+          <!-- Delta labels (floating badges at key moments) -->
+          <g id="delta-labels"></g>
+
+          <!-- Y axis -->
+          <text x="12" y="40"  fill="rgba(255,255,255,.18)" font-size="8" font-family="IBM Plex Mono">5kW</text>
+          <text x="12" y="100" fill="rgba(255,255,255,.18)" font-size="8" font-family="IBM Plex Mono">4kW</text>
+          <text x="12" y="165" fill="rgba(255,255,255,.18)" font-size="8" font-family="IBM Plex Mono">3kW</text>
+          <text x="12" y="230" fill="rgba(255,255,255,.18)" font-size="8" font-family="IBM Plex Mono">2kW</text>
+          <text x="12" y="285" fill="rgba(255,255,255,.18)" font-size="8" font-family="IBM Plex Mono">1kW</text>
+          <!-- X axis -->
+          <text x="40"  y="296" fill="rgba(255,255,255,.18)" font-size="8" font-family="IBM Plex Mono">03:00</text>
+          <text x="195" y="296" fill="rgba(255,255,255,.18)" font-size="8" font-family="IBM Plex Mono">06:00</text>
+          <text x="365" y="296" fill="rgba(255,255,255,.18)" font-size="8" font-family="IBM Plex Mono">09:00</text>
+          <text x="535" y="296" fill="rgba(255,255,255,.18)" font-size="8" font-family="IBM Plex Mono">12:00</text>
+          <text x="700" y="296" fill="rgba(255,255,255,.18)" font-size="8" font-family="IBM Plex Mono">15:00</text>
+        </svg>
+      </div>
+    </div>
+
+    <!-- RIGHT 20% — Heatmap -->
+    <div class="heat-panel">
+      <div class="heat-head">
+        <div class="heat-title">THERMAL MAP</div>
+        <div class="heat-leg">
+          <div class="hleg"><div class="hswatch" style="background:var(--blue)"></div>Cold</div>
+          <div class="hleg"><div class="hswatch" style="background:var(--accent)"></div>OK</div>
+          <div class="hleg"><div class="hswatch" style="background:var(--amber)"></div>Warm</div>
+          <div class="hleg"><div class="hswatch" style="background:var(--red)"></div>Hot</div>
+        </div>
+      </div>
+      <div class="grid-wrap">
+        <div class="tgrid">
+          <div class="zc emp"></div>
+          <div class="zc ok" id="z-nor"><div class="zn">NOR</div><div class="zt" id="zt-nor">20.1°</div><div class="zd ok" id="zd-nor">−0.9° SP</div></div>
+          <div class="zc emp"></div>
+          <div class="zc ok" id="z-wes"><div class="zn">WES</div><div class="zt" id="zt-wes">21.3°</div><div class="zd ok" id="zd-wes">+0.3° SP</div></div>
+          <div class="zc warm" id="z-cor"><div class="zn">COR</div><div class="zt" id="zt-cor">22.8°</div><div class="zd ab" id="zd-cor">+1.8° SP</div></div>
+          <div class="zc ok" id="z-eas"><div class="zn">EAS</div><div class="zt" id="zt-eas">20.7°</div><div class="zd ok" id="zd-eas">−0.3° SP</div></div>
+          <div class="zc emp"></div>
+          <div class="zc cold" id="z-sou"><div class="zn">SOU</div><div class="zt" id="zt-sou">18.2°</div><div class="zd bl" id="zd-sou">−2.8° SP</div></div>
+          <div class="zc emp"></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /dash -->
+
+  <!-- ═══ BUILDING REPORT ═══ -->
+  <div class="view rpt-view" id="view-report">
+    <div><div class="pg-ey">SIMULATION RESULTS · peak_cool_day · BOPTEST v0.7.1</div><div class="pg-h">Building Report</div></div>
+    <div class="rpt-hdr">
+      <div><div class="rpt-bld">25hours Hotel Dubai One Central</div><div class="rpt-m">52-storey · 434 rooms · 218,000 sq.ft · Sauter BMS via BACnet/IP · Dubai, UAE</div></div>
+      <div class="rpt-stamp">Generated: <span>30 Mar 2026</span><br>Scenario: <span>peak_cool_day</span><br>Engine: <span>BOPTEST v0.7.1</span><br>Status: <span style="color:var(--accent)">✓ Validated</span></div>
+    </div>
+    <div class="vs-grid">
+      <div class="vc">
+        <div class="vc-h">CURRENT PERFORMANCE (BASELINE)</div>
+        <div class="vr"><span class="vrl">Energy / day</span><span class="vrv">247 kWh</span></div>
+        <div class="vr"><span class="vrl">Energy cost / day</span><span class="vrv">AED 91</span></div>
+        <div class="vr"><span class="vrl">Annual energy cost</span><span class="vrv">AED 33,215</span></div>
+        <div class="vr"><span class="vrl">Thermal discomfort</span><span class="vrv">3.52 Kh</span></div>
+        <div class="vr"><span class="vrl">CO₂ / year</span><span class="vrv">30.8 tCO₂eq</span></div>
+      </div>
+      <div class="va">→</div>
+      <div class="vc opt">
+        <div class="vc-h">WITH INAIA AI OPTIMIZER</div>
+        <div class="vr"><span class="vrl">Energy / day</span><span class="vrv s">202 kWh ↓18.3%</span></div>
+        <div class="vr"><span class="vrl">Energy cost / day</span><span class="vrv s">AED 74 ↓18.3%</span></div>
+        <div class="vr"><span class="vrl">Annual energy cost</span><span class="vrv s">AED 27,015 — saving AED 6,200</span></div>
+        <div class="vr"><span class="vrl">Thermal discomfort</span><span class="vrv s">3.45 Kh ↓2.0%</span></div>
+        <div class="vr"><span class="vrl">CO₂ / year</span><span class="vrv s">22.1 tCO₂eq ↓8.7t</span></div>
+      </div>
+    </div>
+    <div class="sbox">
+      <div class="sbox-h"><span class="sbox-t">PILOT PROGRAM — THREE PHASES</span></div>
+      <div class="phases">
+        <div class="ph"><div class="ph-n">01</div><div class="ph-t">PHASE 1 · NOW</div><div class="ph-ti">Read-Only Integration</div><div class="ph-d">Connect to your BMS via BACnet/IP — no hardware, no operational risk. We map your data points and build a building-specific performance baseline.</div><div class="ph-du">30 days · Cost: AED 0</div></div>
+        <div class="ph"><div class="ph-n">02</div><div class="ph-t">PHASE 2 · WEEK 4</div><div class="ph-ti">Shadow Mode</div><div class="ph-d">AI runs parallel to your existing controller. Weekly recommendations report and projected annual savings — before we touch a single setpoint.</div><div class="ph-du">30 days · Zero operational risk</div></div>
+        <div class="ph"><div class="ph-n">03</div><div class="ph-t">PHASE 3 · MONTH 2</div><div class="ph-ti">Autonomous Control</div><div class="ph-d">Live AI on 2 selected floors. A/B vs BMS-controlled floors. Measurable savings from day 1. Full manual override always available to hotel team.</div><div class="ph-du">Ongoing · Hotel retains full control</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ PREDICTIVE MAINTENANCE ═══ -->
+  <div class="view maint" id="view-maint">
+    <div class="eq-col">
+      <div class="rp-head"><span class="rp-title">EQUIPMENT</span><span class="rp-count" style="background:var(--adim);color:var(--accent)">12 assets</span></div>
+      <div class="eq-top">
+        <div class="eq-hdr">
+          <div class="eq-ico">❄</div>
+          <div><div class="eq-nm">Chiller 1</div><div class="eq-sb">York YCAL0033EE · Central Plant</div></div>
+        </div>
+        <div class="hw">
+          <div class="ms">
+            <div class="mr"><span class="ml">COP efficiency</span><div class="mb"><div class="mf g" style="width:94%"></div></div><span class="mv" style="color:var(--accent)">94%</span></div>
+            <div class="mr"><span class="ml">Filter ΔP</span><div class="mb"><div class="mf a" style="width:62%"></div></div><span class="mv" style="color:var(--amber)">62%</span></div>
+            <div class="mr"><span class="ml">Vibration</span><div class="mb"><div class="mf g" style="width:100%"></div></div><span class="mv" style="color:var(--accent)">OK</span></div>
+          </div>
+          <div class="aw">
+            <svg viewBox="0 0 38 38" width="38" height="38">
+              <circle cx="19" cy="19" r="15" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="3"/>
+              <circle cx="19" cy="19" r="15" fill="none" stroke="#00C896" stroke-width="3" stroke-dasharray="82 94" stroke-dashoffset="23" stroke-linecap="round"/>
+            </svg>
+            <div class="an">87</div>
+          </div>
+        </div>
+        <div class="eq-ft">
+          <div class="sv">Last svc: <span>Feb 12, 2026</span></div>
+          <div class="bgrp"><button class="bsm">Cal ↗</button><button class="bsm">Manual ↗</button></div>
+        </div>
+      </div>
+      <div class="tree">
+        <div class="zr"><span class="zc2">▼</span><span class="zl">CENTRAL PLANT</span></div>
+        <div class="tr sel"><span class="ti">❄</span><div class="tin"><div class="tn">Chiller 1</div><div class="tm">COP 3.59</div></div><div class="sd ok"></div></div>
+        <div class="tr"><span class="ti">❄</span><div class="tin"><div class="tn">Chiller 2</div><div class="tm">COP 3.41</div></div><div class="sd ok"></div></div>
+        <div class="zr" style="margin-top:2px"><span class="zc2">▼</span><span class="zl">FLOOR 3</span></div>
+        <div class="tr"><span class="ti">💨</span><div class="tin"><div class="tn">AHU-3A</div><div class="tm">17.1°C supply</div></div><div class="sd ok"></div></div>
+        <div class="tr" style="padding-left:36px"><span class="ti" style="font-size:8px">▪</span><div class="tin"><div class="tn" style="font-size:9px">Filter Bank 3A</div><div class="tm" style="color:var(--amber)">ΔP 93 Pa</div></div><div class="sd wa"></div></div>
+        <div class="zr" style="margin-top:2px"><span class="zc2">▶</span><span class="zl">FLOOR 4</span><span class="za">1 alert</span></div>
+        <div class="zr"><span class="zc2">▶</span><span class="zl">FLOOR 5</span></div>
+      </div>
+    </div>
+    <!-- Technical timeline -->
+    <div class="tl-col2">
+      <div class="tl-head">
+        <span class="tl-title">EQUIPMENT TIMELINE</span>
+        <div class="leg-row">
+          <div class="leg"><div class="legdot" style="background:var(--accent)"></div>COP</div>
+          <div class="leg"><div class="legdot" style="background:var(--blue)"></div>Zone Temp</div>
+          <div class="leg"><div class="legdot" style="background:var(--amber)"></div>Fan Power</div>
+        </div>
+        <div class="tabs" style="margin-left:auto">
+          <div class="tab">1h</div><div class="tab on">6h</div><div class="tab">24h</div>
+        </div>
+      </div>
+      <div class="tl-chart">
+        <svg class="tl-svg" id="eq-svg" viewBox="0 0 800 300" preserveAspectRatio="none">
+          <defs><pattern id="egrid" width="80" height="50" patternUnits="userSpaceOnUse"><path d="M80 0L0 0 0 50" fill="none" stroke="rgba(255,255,255,.025)" stroke-width="1"/></pattern></defs>
+          <rect width="800" height="300" fill="url(#egrid)"/>
+          <polyline id="eq-fan"  fill="none" stroke="#F59E0B" stroke-width="1.5" opacity=".8"/>
+          <polyline id="eq-temp" fill="none" stroke="#3B82F6" stroke-width="1.5" opacity=".8"/>
+          <polyline id="eq-cop"  fill="none" stroke="#00C896" stroke-width="2"/>
+          <text x="10"  y="292" fill="rgba(255,255,255,.18)" font-size="8" font-family="IBM Plex Mono">03:00</text>
+          <text x="195" y="292" fill="rgba(255,255,255,.18)" font-size="8" font-family="IBM Plex Mono">06:00</text>
+          <text x="395" y="292" fill="rgba(255,255,255,.18)" font-size="8" font-family="IBM Plex Mono">09:00</text>
+          <text x="590" y="292" fill="rgba(255,255,255,.18)" font-size="8" font-family="IBM Plex Mono">12:00</text>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<!-- FLOATING AI BUBBLE -->
+<div class="ai-bubble">
+  <div class="ai-window" id="ai-win">
+    <div class="ai-whead">
+      <span class="ai-wtitle">✦ INAIA Prism</span>
+      <button class="ai-wclose" onclick="toggleAI()">✕</button>
+    </div>
+    <div class="ai-msgs" id="ai-msgs">
+      <div class="am a"><span class="aw2">INAIA PRISM</span><div class="ab">3 active inefficiencies detected. Zone CORE fan running at 856W during unoccupied hours. Apply the recommendations on the left to capture AED 6,200 in annual savings.</div></div>
+      <div class="am u"><span class="aw2">YOU</span><div class="ab">Why is SOUTH overcooled?</div></div>
+      <div class="am a"><span class="aw2">INAIA PRISM</span><div class="ab">Zone SOUTH is 1.8°C below the lower setpoint because the BMS cooling setpoint is fixed at 21°C without accounting for occupancy or electricity price. At 14:00–19:00, power costs 3× more — pre-cooling in the morning and easing setpoints during peak hours saves the most energy.</div></div>
+    </div>
+    <div class="ai-bar">
+      <input class="ai-in" id="ai-in" placeholder="Ask about your building…"/>
+      <div class="ai-send" onclick="sendAI()">↑</div>
+    </div>
+  </div>
+  <button class="ai-btn" onclick="toggleAI()" title="INAIA Prism AI">✦</button>
+</div>
+
+<script>
+// ─── NAV ───
+const vtitles = {dash:'Dashboard',report:'Building Report',maint:'Predictive Maintenance'};
+function sv(id,el){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
+  document.querySelectorAll('.sbi').forEach(n=>n.classList.remove('on'));
+  document.getElementById('view-'+id).classList.add('on');
+  el.classList.add('on');
+  document.getElementById('vtitle').textContent = vtitles[id];
+}
+
+// ─── AI BUBBLE ───
+function toggleAI(){
+  document.getElementById('ai-win').classList.toggle('open');
+}
+function sendAI(){
+  const inp=document.getElementById('ai-in');
+  const txt=inp.value.trim(); if(!txt)return;
+  const msgs=document.getElementById('ai-msgs');
+  msgs.innerHTML+=`<div class="am u"><span class="aw2">YOU</span><div class="ab">${txt}</div></div>`;
+  inp.value='';
+  setTimeout(()=>{
+    msgs.innerHTML+=`<div class="am a"><span class="aw2">INAIA PRISM</span><div class="ab">Analyzing building data… Cross-referencing 24h sensor history with current simulation state to give you a specific recommendation.</div></div>`;
+    msgs.scrollTop=msgs.scrollHeight;
+  },600);
+  msgs.scrollTop=msgs.scrollHeight;
+}
+document.getElementById('ai-in').addEventListener('keydown',e=>{if(e.key==='Enter')sendAI();});
+
+// ─── APPLY / DECLINE RECS ───
+function applyRec(btn, id){
+  const card = btn.closest('.rec-card');
+  card.style.opacity = '0.5';
+  card.style.pointerEvents = 'none';
+  btn.textContent = '✓ Applied';
+  btn.style.background = 'rgba(0,200,150,0.3)';
+  // Update KPI strip to reflect saving
+  const savings = {'rec1':'AED 6,487/yr','rec2':'AED 6,392/yr','rec3':'AED 6,323/yr'};
+  if(savings[id]) document.querySelector('.kpi-row:nth-child(3) .kpi-val').textContent = savings[id];
+}
+function declineRec(btn){
+  const card = btn.closest('.rec-card');
+  card.style.height = card.offsetHeight+'px';
+  card.style.transition = 'opacity .3s, transform .3s';
+  card.style.opacity='0';
+  card.style.transform='translateX(-10px)';
+  setTimeout(()=>card.remove(),300);
+}
+
+// ─── MAIN TIMELINE (dual-line with delta) ───
+const W=800, H=300, padL=32, padR=10, padT=15, padB=20;
+const cW=W-padL-padR, cH=H-padT-padB;
+const N=120;
+
+// Baseline: higher, noisier
+// Optimizer: tracks baseline but lower, especially during occupied hours
+let blData=[], optData=[];
+
+function genData(){
+  blData=[]; optData=[];
+  for(let i=0;i<N;i++){
+    const hr=(i/N)*18+3; // 03:00 to 21:00
+    // Baseline: ramps up with occupancy, peaks midday
+    const bl = 1.8 + Math.sin((hr-3)/18*Math.PI)*2.8 + (Math.random()-.5)*.25;
+    blData.push(Math.max(.5,bl));
+    // Optimizer: ~18% lower during occupied hours, much lower at night
+    const occ = hr>6 && hr<20;
+    const reduction = occ ? .18 + Math.sin((hr-6)/14*Math.PI)*.08 : .40;
+    const opt = bl*(1-reduction) + (Math.random()-.5)*.15;
+    optData.push(Math.max(.3,opt));
+  }
+}
+
+function toX(i){ return padL + (i/(N-1))*cW; }
+function toY(v){ return padT + cH - ((v-0)/(5-0))*cH; }
+
+function drawDualChart(){
+  const blPts = blData.map((v,i)=>`${toX(i).toFixed(1)},${toY(v).toFixed(1)}`).join(' ');
+  const optPts = optData.map((v,i)=>`${toX(i).toFixed(1)},${toY(v).toFixed(1)}`).join(' ');
+
+  // Delta fill polygon (between bl top and opt top)
+  const fill = blData.map((v,i)=>`${toX(i).toFixed(1)},${toY(v).toFixed(1)}`).join(' ')
+    + ' ' + optData.map((v,i)=>`${toX(N-1-i).toFixed(1)},${toY(optData[N-1-i]).toFixed(1)}`).join(' ');
+
+  document.getElementById('bl-line').setAttribute('points', blPts);
+  document.getElementById('opt-line').setAttribute('points', optPts);
+  document.getElementById('delta-fill').setAttribute('points', fill);
+
+  // Delta badges at 3 key moments
+  const svg = document.getElementById('delta-labels');
+  svg.innerHTML='';
+  [[20,'06:00'],[60,'12:00'],[95,'18:00']].forEach(([i,label])=>{
+    const x=toX(i), ybl=toY(blData[i]), yopt=toY(optData[i]);
+    const delta=((blData[i]-optData[i])/blData[i]*100).toFixed(0);
+    const midY=(ybl+yopt)/2;
+    // vertical dashed line between the two
+    const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',x);line.setAttribute('y1',ybl);
+    line.setAttribute('x2',x);line.setAttribute('y2',yopt);
+    line.setAttribute('stroke','rgba(245,158,11,.4)');line.setAttribute('stroke-width','1');
+    line.setAttribute('stroke-dasharray','2 2');
+    svg.appendChild(line);
+    // badge
+    const rect=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    rect.setAttribute('x',x-16);rect.setAttribute('y',midY-8);
+    rect.setAttribute('width','32');rect.setAttribute('height','14');
+    rect.setAttribute('rx','3');rect.setAttribute('fill','rgba(245,158,11,.18)');
+    svg.appendChild(rect);
+    const txt=document.createElementNS('http://www.w3.org/2000/svg','text');
+    txt.setAttribute('x',x);txt.setAttribute('y',midY+1);
+    txt.setAttribute('text-anchor','middle');txt.setAttribute('font-size','7');
+    txt.setAttribute('fill','#F59E0B');txt.setAttribute('font-family','IBM Plex Mono');
+    txt.textContent='↓'+delta+'%';
+    svg.appendChild(txt);
+  });
+}
+
+// ─── EQUIPMENT TIMELINE ───
+const eqData={cop:[],temp:[],fan:[]};
+function initEq(){
+  for(let i=0;i<N;i++){
+    const t=i*.1;
+    eqData.cop.push(3.2+Math.sin(t*.3)*.4+Math.random()*.12);
+    eqData.temp.push(20+Math.sin(t*.2+1)*1.5+Math.random()*.25);
+    eqData.fan.push(850+Math.sin(t*.4+2)*180+Math.random()*45);
+  }
+  drawEq();
+}
+function drawEq(){
+  function pts(data,lo,hi){
+    return data.map((v,i)=>{
+      const x=padL+(i/(N-1))*cW;
+      const y=padT+cH-((v-lo)/(hi-lo))*cH;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+  }
+  document.getElementById('eq-cop').setAttribute('points',pts(eqData.cop,2.5,4.5));
+  document.getElementById('eq-temp').setAttribute('points',pts(eqData.temp,17,25));
+  document.getElementById('eq-fan').setAttribute('points',pts(eqData.fan,400,1200));
+}
+function tickEq(){
+  const push=(a,v)=>{a.push(v);a.shift();};
+  push(eqData.cop,eqData.cop[N-1]+(Math.random()-.5)*.1);
+  push(eqData.temp,eqData.temp[N-1]+(Math.random()-.5)*.15);
+  push(eqData.fan,eqData.fan[N-1]+(Math.random()-.5)*28);
+  drawEq();
+}
+
+// ─── DUAL CHART LIVE TICK ───
+function tickDual(){
+  // shift both arrays and add new point
+  blData.shift(); optData.shift();
+  const lastBl=blData[N-2]; const lastOpt=optData[N-2];
+  const newBl=Math.max(.5,lastBl+(Math.random()-.48)*.12);
+  const occ=true; const red=.17+Math.random()*.05;
+  blData.push(newBl);
+  optData.push(Math.max(.3,newBl*(1-red)+(Math.random()-.5)*.08));
+  drawDualChart();
+}
+
+// ─── THERMAL GRID ───
+const zs={nor:{base:20.1,sp:21},wes:{base:21.3,sp:21},cor:{base:22.8,sp:21},eas:{base:20.7,sp:21},sou:{base:18.2,sp:21}};
+const zt={}; Object.keys(zs).forEach(k=>zt[k]=zs[k].base);
+function zcls(t){return t<19?'zc cold':t<=22?'zc ok':t<=24?'zc warm':'zc hot';}
+function dcls(d){return d>0.5?'zd ab':d<-0.5?'zd bl':'zd ok';}
+function tickZones(){
+  Object.entries(zs).forEach(([k,z])=>{
+    zt[k]+=((Math.random()-.48)*.1);
+    zt[k]=Math.max(16,Math.min(28,zt[k]));
+    const t=zt[k],d=t-z.sp,s=d>=0?'+':'';
+    document.getElementById('zt-'+k).textContent=t.toFixed(1)+'°';
+    const de=document.getElementById('zd-'+k);
+    de.textContent=`${s}${d.toFixed(1)}° SP`; de.className=dcls(d);
+    document.getElementById('z-'+k).className=zcls(t);
+  });
+}
+
+// ─── TREE ───
+document.querySelectorAll('.tr').forEach(r=>{
+  r.addEventListener('click',function(){
+    document.querySelectorAll('.tr').forEach(x=>x.classList.remove('sel'));
+    this.classList.add('sel');
+  });
+});
+
+// ─── INIT ───
+genData();
+drawDualChart();
+initEq();
+setInterval(tickDual, 1500);
+setInterval(tickEq,  1200);
+setInterval(tickZones, 1800);
+</script>
+</body>
+</html>

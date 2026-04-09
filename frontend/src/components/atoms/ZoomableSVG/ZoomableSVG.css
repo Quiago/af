@@ -1,0 +1,68 @@
+.zsvg-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  cursor: grab;
+  user-select: none;
+}
+.zsvg-wrap--dragging,
+.zsvg-wrap:active {
+  cursor: grabbing;
+}
+
+/* ── Zoom toolbar ────────────────────────────────────────── */
+.zsvg-toolbar {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(7,9,15,0.85);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px;
+  padding: 3px 5px;
+  backdrop-filter: blur(4px);
+  z-index: 10;
+}
+
+.zsvg-btn {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s, border-color 0.12s;
+}
+.zsvg-btn:hover {
+  color: var(--color-text-primary);
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.1);
+}
+.zsvg-btn--fit {
+  font-size: 11px;
+  color: var(--color-accent);
+}
+.zsvg-btn--fit:hover {
+  background: rgba(0,200,150,0.1);
+  border-color: rgba(0,200,150,0.2);
+}
+
+.zsvg-pct {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--color-text-muted);
+  min-width: 30px;
+  text-align: center;
+  pointer-events: none;
+}

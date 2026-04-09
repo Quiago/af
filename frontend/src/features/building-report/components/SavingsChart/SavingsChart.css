@@ -1,0 +1,167 @@
+.savings-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+/* ── Slim stats strip ────────────────────────────────────── */
+.savings-stats-strip {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--color-divider);
+  flex-shrink: 0;
+  background: var(--color-surface);
+  flex-wrap: wrap;
+}
+
+.sstat {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.sstat--right {
+  margin-left: auto;
+}
+
+.sstat-val {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-status-ok);
+}
+.sstat-val--blue { color: #3B82F6; }
+
+.sstat-lbl {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--color-text-faint);
+}
+
+.go-live-btn {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-status-ok);
+  background: rgba(75, 139, 104, 0.10);
+  border: 1px solid rgba(75, 139, 104, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 2px var(--space-2);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-standard);
+  white-space: nowrap;
+  font-weight: 600;
+}
+.go-live-btn:hover { background: rgba(75, 139, 104, 0.18); }
+
+.mock-badge {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #F59E0B;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+}
+
+/* ── Chart wrap — fills remaining space, relatively positioned ─ */
+.savings-chart-wrap {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Chart canvas ────────────────────────────────────────── */
+.savings-chart-container {
+  position: absolute;
+  inset: 0;
+  background: var(--color-canvas);
+}
+
+/* ── Legend overlay — sits on top of canvas, top-left corner ── */
+.chart-legend-overlay {
+  position: absolute;
+  top: 10px;
+  left: 14px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  pointer-events: none; /* clicks pass through to chart */
+}
+
+.savings-title-inline {
+  font-family: var(--font-body);
+  font-size: 9px;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  font-weight: 600;
+  color: rgba(107, 126, 150, 0.8);
+}
+
+.sleg-row {
+  display: flex;
+  gap: 10px;
+  background: rgba(14, 22, 32, 0.65);
+  backdrop-filter: blur(4px);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.sleg {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 8.5px;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+}
+.sleg--delta { color: var(--color-status-ok); }
+.slegdot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.slegdot--baseline { background: rgba(255, 255, 255, 0.35); }
+.slegdot--inaia    { background: #00C896; }
+.slegdot--tariff   { background: rgba(239, 68, 68, 0.5); }
+.slegdot--delta    { background: var(--color-status-ok); }
+
+/* ── State overlays (loading / no data) ──────────────────── */
+.savings-state-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-faint);
+  background: rgba(10, 16, 24, 0.85);
+  backdrop-filter: blur(4px);
+}
+
+.savings-state-overlay--warn {
+  color: var(--color-status-warning);
+}
+
+.state-icon {
+  font-size: 22px;
+  opacity: 0.6;
+}
+
+.state-sub {
+  font-size: 9px;
+  color: var(--color-text-faint);
+}

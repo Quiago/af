@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# BOPTEST simulator — large binary/data files, not for git
+backend/api/v1/simulator/testcases/*/models/wrapped.fmu
+backend/api/v1/simulator/testcases/*/models/Resources/
+backend/api/v1/simulator/testing/references/
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.env.local
+
+# IDE / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Secrets
+.env
+backend/.env

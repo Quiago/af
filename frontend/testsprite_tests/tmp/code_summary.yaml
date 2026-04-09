@@ -1,0 +1,108 @@
+project_name: af-frontend
+description: >
+  Real-time building energy optimization platform frontend.
+  Connects to a FastAPI backend via REST and WebSocket to visualize
+  thermal data, equipment status, and simulation results for a digital twin.
+
+tech_stack:
+  framework: React 19
+  build_tool: Vite 8
+  language: TypeScript 5.9 (strict mode)
+  state_management:
+    - Zustand 5 (client/UI state)
+    - TanStack Query v5 (server state)
+  routing: React Router v7
+  ui_components: shadcn/ui (Radix UI primitives)
+  styling: CSS Variables (no Tailwind)
+  charts: Lightweight Charts (TradingView) v5
+  3d_rendering: Three.js v0.183
+  icons: Lucide React
+  http: fetch (native browser)
+  websocket: native WebSocket (custom manager in lib/websocket.ts)
+
+dev_server:
+  port: 5173
+  command: npm run dev
+  base_url: http://localhost:5173
+
+backend_api:
+  base_url: http://localhost:8000
+  env_var: VITE_API_URL
+  endpoints:
+    - GET /api/v1/building/snapshot  # initial building state
+  websocket: ws://localhost:8000/ws  # live building stream
+
+features:
+  - name: Digital Twin (Dashboard)
+    route: / (default view, activeView='dash')
+    description: >
+      3D building viewer with Three.js, floor plan SVG overlay,
+      simulation delta bar, and AI recommendations panel.
+      Real-time zone temperatures and equipment status from WebSocket.
+    components:
+      - DashboardPage
+      - DashboardLayout
+      - RecommendationsPanel
+      - DigitalTwinView
+      - BuildingViewer (Three.js 3D)
+      - FloorPlanViewer (SVG)
+      - SimulationDeltaBar
+
+  - name: Building Report
+    route: / (activeView='report')
+    description: >
+      Historical performance charts, savings analysis, thermal heatmap,
+      and benchmark data. Uses REST polling for historical data.
+    components:
+      - BuildingReportView
+      - ReportChart
+      - SavingsChart (Lightweight Charts)
+
+  - name: Predictive Maintenance
+    route: / (activeView='maint')
+    description: >
+      Equipment health panel with tree view, health gauges, timeline chart,
+      and HVAC system diagram. Shows chiller, AHUs, filters status.
+    components:
+      - PredictiveMaintenanceView
+      - EquipmentPanel
+      - TreeView
+      - HealthGauge
+      - HealthBar
+      - AssetDetail
+      - TimelineChart (Lightweight Charts)
+      - SystemDiagram
+
+app_shell:
+  component: AppShell
+  description: >
+    Main layout with sidebar navigation (3 views), topbar with live status
+    indicator, WebSocket lifecycle management, and AI chat bubble overlay.
+  navigation:
+    - icon: "⬡"
+      label: Digital Twin
+      view: dash
+    - icon: "▤"
+      label: Building Report
+      view: report
+    - icon: "◎"
+      label: Predictive Maintenance
+      view: maint
+
+data_flow:
+  - WebSocket -> wsManager (lib/websocket.ts) -> Zustand store -> hooks -> components
+  - REST API -> TanStack Query -> hooks -> components
+  - No direct fetching in components
+
+store_slices:
+  - file: store/dashboardStore.ts
+    state:
+      - "activeView: 'dash' | 'report' | 'maint'"
+      - "snapshot: BuildingSnapshot | null"
+      - "connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'reconnecting'"
+
+key_types:
+  - ZoneData (id, name, temperature, setpoint, co2, occupancy)
+  - EquipmentData (id, name, type, status, metrics)
+  - BuildingSnapshot (timestamp, zones, equipment, kpis)
+  - "ActiveView ('dash' | 'report' | 'maint')"

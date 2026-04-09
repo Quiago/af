@@ -1,0 +1,258 @@
+/* ── Root shell ───────────────────────────────────────────────── */
+.app-shell {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+}
+
+/* ── Sidebar — macOS Finder/Settings style ────────────────────── */
+.sidebar {
+  width: 70px;
+  background: var(--color-bg);        /* same as page — disappears into background */
+  border-right: 1px solid var(--color-divider);
+  display: flex;
+  flex-direction: column;
+  transition: width var(--duration-slow) var(--ease-soft);
+  flex-shrink: 0;
+  overflow: hidden;
+  z-index: 20;
+}
+.sidebar:hover { width: 220px; }
+
+/* Logo */
+.sb-logo {
+  padding: 14px 12px;
+  border-bottom: 1px solid var(--color-divider);
+  display: flex;
+  align-items: center;
+  min-height: 52px;
+  flex-shrink: 0;
+  /* No overflow:hidden here — the sidebar itself handles clipping */
+}
+.sb-logo-img {
+  height: 20px;
+  width: auto;
+  object-fit: contain;
+  object-position: left center;
+  max-width: 180px;   /* full logo fits at 220px expanded sidebar */
+  flex-shrink: 0;
+}
+
+/* Nav */
+.sb-nav {
+  flex: 1;
+  padding: 6px 8px;        /* padding on both sides — items fill between */
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow: hidden;
+}
+
+.sb-sec {
+  font-family: var(--font-body);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: var(--tracking-wider);
+  color: var(--color-text-faint);
+  padding: 14px 4px 4px;
+  white-space: nowrap;
+  text-transform: uppercase;
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-standard);
+}
+.sidebar:hover .sb-sec { opacity: 1; }
+
+/* Nav item — INAIA brochure: left border stripe + soft fill */
+.sbi {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 8px 7px 6px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  border-left: 2px solid transparent;
+  margin: 0;
+  transition: background var(--duration-fast) var(--ease-standard),
+              border-color var(--duration-fast) var(--ease-standard);
+  min-height: 34px;
+}
+.sbi:hover {
+  background: var(--color-primary-soft);
+}
+.sbi--active {
+  background: var(--color-primary-soft);
+  border-left-color: var(--color-primary);
+}
+.sbi--active .sbi-icon { color: var(--color-primary); }
+.sbi--active .sbi-label { color: var(--color-primary); font-weight: 600; }
+
+.sbi-icon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--color-text-faint);
+  font-size: 14px;
+}
+.sbi-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-standard);
+  letter-spacing: var(--tracking-normal);
+}
+.sidebar:hover .sbi-label { opacity: 1; }
+
+.sb-divider {
+  height: 1px;
+  background: var(--color-divider);
+  margin: 6px 4px;
+}
+
+
+/* ── Main area ────────────────────────────────────────────────── */
+.main-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* ── Topbar — macOS window chrome ─────────────────────────────── */
+.topbar {
+  height: 52px;
+  background: var(--gradient-panel);
+  border-bottom: 1px solid var(--color-divider);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.tb-title {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--color-text-faint);
+  letter-spacing: var(--tracking-normal);
+}
+.tb-title b {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+/* Right cluster — live pill + user */
+.tb-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* User chip */
+.tb-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 12px;
+  border-left: 1px solid var(--color-divider);
+}
+.tb-av {
+  width: 26px;
+  height: 26px;
+  background: var(--color-primary-soft);
+  border: 1px solid var(--color-primary-border);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+.tb-user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.tb-nm {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+  letter-spacing: var(--tracking-normal);
+}
+.tb-rl {
+  font-size: 10px;
+  color: var(--color-text-faint);
+  white-space: nowrap;
+}
+
+/* Live pill — Apple-style status indicator */
+.live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(26, 142, 95, 0.20);
+  background: rgba(26, 142, 95, 0.06);
+}
+.live-pill--offline {
+  border-color: rgba(184, 122, 0, 0.22);
+  background: rgba(184, 122, 0, 0.05);
+}
+
+.ldot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-status-ok);
+  flex-shrink: 0;
+  animation: blink 2.4s ease-in-out infinite;
+}
+.ldot--offline {
+  background: var(--color-status-warning);
+  animation: none;
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+.llbl {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--color-status-ok);
+  letter-spacing: var(--tracking-wide);
+}
+.llbl--offline { color: var(--color-status-warning); }
+
+/* ── View slots ───────────────────────────────────────────────── */
+.view-slot {
+  display: none;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+.view-slot--active {
+  display: flex;
+  flex-direction: column;
+}
+.view-slot--scroll.view-slot--active {
+  overflow-y: auto;
+}
+.view-slot--scroll::-webkit-scrollbar { width: 3px; }
+.view-slot--scroll::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+}

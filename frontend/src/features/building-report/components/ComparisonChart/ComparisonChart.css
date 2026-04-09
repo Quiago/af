@@ -1,0 +1,180 @@
+/* ── Comparison panel layout ─────────────────────────────── */
+.comp-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+/* ── Header row ──────────────────────────────────────────── */
+.comp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--color-divider);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+/* ── Variable selector pills ─────────────────────────────── */
+.comp-var-selector {
+  display: flex;
+  gap: 4px;
+}
+
+.comp-var-btn {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: var(--tracking-wide);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-divider);
+  background: transparent;
+  color: var(--color-text-faint);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-standard);
+  text-transform: uppercase;
+}
+
+.comp-var-btn:hover {
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+  background: var(--color-surface-soft);
+}
+
+.comp-var-btn--active {
+  background: var(--color-canvas);
+}
+
+/* ── Stats area ──────────────────────────────────────────── */
+.comp-stats {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.comp-stat-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--color-text-muted);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-full);
+  padding: 3px 9px;
+}
+
+.comp-stat-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Reuse mock-badge from SavingsChart */
+.mock-badge {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #F59E0B;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+}
+
+/* ── Chart area ──────────────────────────────────────────── */
+.comp-chart-wrap {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.comp-chart-container {
+  position: absolute;
+  inset: 0;
+  background: var(--color-canvas);
+}
+
+/* ── Legend overlay (reuse savings-chart classes) ─────────── */
+.chart-legend-overlay {
+  position: absolute;
+  top: 10px;
+  left: 14px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  pointer-events: none;
+}
+
+.savings-title-inline {
+  font-family: var(--font-body);
+  font-size: 9px;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  font-weight: 600;
+  color: rgba(107, 126, 150, 0.8);
+}
+
+.sleg-row {
+  display: flex;
+  gap: 10px;
+  background: rgba(14, 22, 32, 0.65);
+  backdrop-filter: blur(4px);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.sleg {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 8.5px;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+}
+
+.sleg--unit {
+  color: var(--color-text-faint);
+  font-style: italic;
+}
+
+.slegdot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.slegdot--baseline { background: rgba(255, 255, 255, 0.35); }
+
+/* ── State overlays ──────────────────────────────────────── */
+.savings-state-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-faint);
+  background: rgba(10, 16, 24, 0.85);
+  backdrop-filter: blur(4px);
+}
+
+.savings-state-overlay--warn { color: var(--color-status-warning); }
+.state-icon  { font-size: 22px; opacity: 0.6; }
+.state-sub   { font-size: 9px; color: var(--color-text-faint); }

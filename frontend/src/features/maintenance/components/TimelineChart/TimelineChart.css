@@ -1,0 +1,119 @@
+.timeline-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--gradient-panel);
+}
+
+.timeline-loading {
+  font-size: var(--text-xs);
+  color: var(--color-text-faint);
+  padding: var(--space-2) var(--space-4);
+  flex-shrink: 0;
+}
+
+.timeline-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.timeline-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-divider);
+  background: transparent;
+  flex-shrink: 0;
+}
+
+.panel-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-text-faint);
+  flex-shrink: 0;
+}
+
+.timeline-legend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex: 1;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.legend-label {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.time-range-buttons {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.time-range-btn {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-sm);
+  padding: 2px var(--space-2);
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-standard),
+              border-color var(--duration-fast) var(--ease-standard),
+              background var(--duration-fast) var(--ease-standard);
+}
+
+.time-range-btn:hover {
+  color: var(--color-text);
+  border-color: var(--color-border);
+  background: var(--color-surface-soft);
+}
+
+.time-range-btn--active {
+  color: var(--color-primary);
+  border-color: var(--color-primary-border);
+  background: var(--color-primary-soft);
+}
+
+.go-live-btn {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-status-ok);
+  background: rgba(75, 139, 104, 0.10);
+  border: 1px solid rgba(75, 139, 104, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 2px var(--space-2);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-standard);
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.go-live-btn:hover {
+  background: rgba(75, 139, 104, 0.18);
+}
+
+.timeline-chart-container {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--color-canvas);
+}

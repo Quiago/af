@@ -1,0 +1,25 @@
+.equipment-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+/* Top 35% — AssetDetail */
+.equipment-panel-detail {
+  flex: 0 0 35%;
+  min-height: 0;
+  overflow: hidden;
+  border-bottom: 1px solid var(--color-divider);
+  background: var(--color-surface-2);
+}
+
+/* Bottom 65% — TreeView */
+.equipment-panel-tree {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}

@@ -1,0 +1,251 @@
+/* ── Context shell ────────────────────────────────────────────── */
+.wx-ctx {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  height: 100%;
+  overflow-y: auto;
+  padding: 2px 0 8px;
+}
+
+.wx-ctx::-webkit-scrollbar { width: 3px; }
+.wx-ctx::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+}
+
+/* ── Sections ─────────────────────────────────────────────────── */
+.wx-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wx-section--forecast {
+  flex: 1;
+}
+
+.wx-section-label {
+  font-family: var(--font-body);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  color: var(--color-text-faint);
+}
+
+.wx-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ── Loading / error states ───────────────────────────────────── */
+.wx-loading, .wx-error {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-faint);
+  padding: 8px 0;
+}
+
+.wx-error { color: var(--color-status-warning); }
+
+/* ── Current stats row ────────────────────────────────────────── */
+.wx-stats-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  padding: 14px 20px;
+}
+
+.wx-stat-divider {
+  width: 1px;
+  height: 32px;
+  background: var(--color-divider);
+  flex-shrink: 0;
+}
+
+.wx-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.wx-stat-val {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+
+.wx-stat-val--hot    { color: #EF4444; }
+.wx-stat-val--solar  { color: #F59E0B; }
+
+.wx-stat-lbl {
+  font-family: var(--font-body);
+  font-size: 9px;
+  color: var(--color-text-faint);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+/* ── Forecast legend ──────────────────────────────────────────── */
+.wx-forecast-legend {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.wx-leg {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--color-text-faint);
+}
+
+.wx-leg--temp  { color: rgba(239, 68, 68, 0.8); }
+.wx-leg--solar { color: rgba(245, 158, 11, 0.8); }
+.wx-leg--peak  {
+  background: rgba(239, 68, 68, 0.08);
+  padding: 1px 5px;
+  border-radius: var(--radius-xs);
+  color: rgba(239, 68, 68, 0.7);
+  border: 1px solid rgba(239, 68, 68, 0.15);
+}
+
+/* ── Sparkline ────────────────────────────────────────────────── */
+.wx-spark-wrap {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  padding: 8px 12px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wx-spark-svg {
+  display: block;
+  width: 100%;
+}
+
+.wx-spark-placeholder {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-faint);
+  padding: 20px 0;
+  text-align: center;
+}
+
+/* ── HVAC load micro-bars ─────────────────────────────────────── */
+.wx-load-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 20px;
+}
+
+.wx-load-lbl {
+  font-family: var(--font-mono);
+  font-size: 7px;
+  color: var(--color-text-faint);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  padding-bottom: 2px;
+}
+
+.wx-load-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+  flex: 1;
+  height: 100%;
+}
+
+.wx-load-bar {
+  flex: 1;
+  border-radius: 1px 1px 0 0;
+  min-height: 1px;
+  transition: height 0.3s ease;
+}
+
+/* ── Occupancy list ───────────────────────────────────────────── */
+.wx-occ-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+}
+
+.wx-occ-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.wx-occ-id {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--color-text);
+  letter-spacing: 0.06em;
+  width: 80px;
+  flex-shrink: 0;
+}
+
+.wx-occ-bar-track {
+  flex: 1;
+  height: 5px;
+  background: var(--color-surface);
+  border-radius: 3px;
+  overflow: hidden;
+  border: 1px solid var(--color-divider);
+}
+
+.wx-occ-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s var(--ease-standard);
+}
+
+.wx-occ-co2 {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  width: 56px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.wx-occ-badge {
+  font-family: var(--font-body);
+  font-size: 8px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+  width: 56px;
+  text-align: center;
+}
+
+.wx-occ-badge--yes {
+  background: rgba(73, 103, 99, 0.12);
+  color: var(--color-status-ok);
+}
+
+.wx-occ-badge--no {
+  background: rgba(140, 150, 166, 0.10);
+  color: var(--color-text-faint);
+}

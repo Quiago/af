@@ -1,0 +1,225 @@
+.container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-glass-bg);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 0.5px solid var(--color-glass-stroke);
+  border-radius: var(--radius-full);
+  padding: 10px 24px;
+  box-shadow: var(--shadow-md);
+  z-index: 10;
+}
+
+.timeline {
+  display: flex;
+  align-items: center;
+  position: relative;
+  gap: 60px;
+}
+
+/* Connecting lines */
+.line {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: rgba(142, 167, 193, 0.2);
+  transform: translateY(-50%);
+  z-index: 0;
+}
+
+/* Branch indicating current state */
+.lineActive {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  height: 2px;
+  background: var(--color-live);
+  transform: translateY(-50%);
+  z-index: 1;
+  transition: width 0.4s var(--ease-standard);
+}
+
+/* Individual node container to position text/popups relative to it */
+.nodeWrapper {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+}
+
+.node {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 3px solid var(--color-glass-bg);
+  background: rgba(142, 167, 193, 0.4);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-standard);
+  box-shadow: 0 0 0 1px rgba(142, 167, 193, 0.2);
+}
+
+.node:hover {
+  background: var(--color-text);
+  transform: scale(1.2);
+}
+
+.nodeActive {
+  background: var(--color-live);
+  box-shadow: 0 0 0 2px rgba(0, 200, 150, 0.3);
+}
+
+.nodeSimulated {
+  background: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+}
+
+/* Hover tooltip (git commit message) */
+.tooltip {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  background: var(--color-canvas);
+  color: var(--color-text-inverse);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: all var(--duration-fast) var(--ease-standard);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.nodeWrapper:hover .tooltip {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Pointer arrow for tooltip */
+.tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 5px;
+  border-style: solid;
+  border-color: var(--color-canvas) transparent transparent transparent;
+}
+
+/* Detailed Action Popup on Click */
+.popup {
+  position: absolute;
+  bottom: calc(100% + 18px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 260px;
+  background: var(--color-glass-bg);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid var(--color-glass-stroke);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  box-shadow: var(--shadow-md);
+  cursor: default;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Connect popup to node */
+.popup::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 6px;
+  border-style: solid;
+  border-color: var(--color-glass-stroke) transparent transparent transparent;
+}
+
+.popupHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 11px;
+  color: var(--color-text);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.popupId {
+  font-family: var(--font-mono);
+  color: var(--color-text-faint);
+  font-size: 9px;
+}
+
+.popupDesc {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.popupImpact {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-status-ok);
+  background: rgba(0, 200, 150, 0.08);
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  display: inline-block;
+  align-self: flex-start;
+  font-weight: 600;
+}
+
+/* Generic layout info inside popup */
+.popupAuthor {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--color-text-faint);
+  margin-top: 4px;
+}
+
+.rollbackBtn {
+  margin-top: 4px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 0;
+  background: rgba(239, 68, 68, 0.1); /* Subtle red tint */
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: var(--color-status-critical);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.rollbackBtn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #fff;
+}

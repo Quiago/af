@@ -1,0 +1,38 @@
+/* ── Debug / Simulation 2-column layout ──────────────────────── */
+.sim-grid {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--color-bg);
+}
+
+/* Left — mini 3D twin + rec card + deltas (fixed compact width) */
+.sim-col-twin {
+  width: 300px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: 1px solid var(--color-divider);
+  background: var(--color-surface);
+}
+
+.sim-mini-twin {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: var(--color-canvas);
+  min-height: 0;
+}
+
+/* Right — streaming timeline charts (takes all remaining space) */
+.sim-col-timelines {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  background: #171D23;
+}

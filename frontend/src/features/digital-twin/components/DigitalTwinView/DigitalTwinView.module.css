@@ -1,0 +1,197 @@
+.view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  background: var(--color-bg);
+}
+
+/* ── Canvas area — Autodesk viewport ─────────────────────────── */
+.canvasWrapper {
+  position: relative;
+  height: 100%;
+  flex: 1;
+  background: var(--color-canvas);
+  overflow: hidden;
+  /* Subtle inset to separate from panels */
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+.viewLayer {
+  position: absolute;
+  inset: 0;
+  display: none;
+}
+.viewLayer.visible {
+  display: block;
+}
+
+/* ── HUD top-left — Apple vibrancy glass (exact formula) ─────── */
+.hud {
+  position: absolute;
+  top: 12px;
+  left: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.hudBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  /* Apple's exact vibrancy: blur + saturation boost + translucent white */
+  background: var(--color-glass-bg);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  border: 0.5px solid var(--color-glass-stroke);
+  border-radius: var(--radius-full);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-text);
+  box-shadow: var(--shadow-sm);
+}
+
+.hudKey {
+  color: var(--color-text-faint);
+  font-size: 8px;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.hudLive {
+  color: var(--color-status-ok);
+  border-color: rgba(26, 142, 95, 0.30);
+  font-weight: 600;
+  letter-spacing: var(--tracking-wide);
+}
+
+.hudSimulate {
+  color: var(--color-deep-purple);
+  border-color: rgba(50, 42, 92, 0.35);
+  background: rgba(50, 42, 92, 0.08);
+  font-weight: 600;
+  letter-spacing: var(--tracking-wide);
+  animation: pulse-primary 2s ease-in-out infinite;
+}
+
+@keyframes pulse-primary {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.55; }
+}
+
+/* ── View toggle top-right — glass segmented control ─────────── */
+.viewToggle {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  display: flex;
+  gap: 0;
+  z-index: 10;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.toggleBtn {
+  padding: 5px 14px;
+  background: var(--color-glass-bg);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  border: 0.5px solid var(--color-glass-stroke);
+  color: var(--color-text-muted);
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-standard),
+              color var(--duration-fast) var(--ease-standard);
+  letter-spacing: var(--tracking-normal);
+}
+.toggleBtn:first-child {
+  border-right: 0.5px solid var(--color-glass-stroke);
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+.toggleBtn:last-child {
+  border-left: none;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+.toggleBtn:hover {
+  background: var(--color-glass-bg-strong);
+  color: var(--color-text);
+}
+/* Active: filled primary — Autodesk selection highlight */
+.toggleActive {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+  font-weight: 600;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* ── Floor bar bottom-center — glass segmented control ───────── */
+.floorBar {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0;
+  z-index: 10;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.floorBtn {
+  padding: 5px 20px;
+  background: var(--color-glass-bg);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  border: 0.5px solid var(--color-glass-stroke);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 0;
+  transition: color var(--duration-fast) var(--ease-standard),
+              background var(--duration-fast) var(--ease-standard);
+}
+.floorBtn:first-child {
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  border-right: 0.5px solid var(--color-glass-stroke);
+}
+.floorBtn:last-child {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  border-left: none;
+}
+.floorBtn:hover {
+  background: var(--color-glass-bg-strong);
+  color: var(--color-text);
+}
+.floorActive {
+  color: var(--color-primary);
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+/* Removed controlsRow and zoneStrip styles */
+
+.hudDeltaGood {
+  color: var(--color-status-ok);
+  border-color: rgba(73, 103, 99, 0.40);
+  background: rgba(73, 103, 99, 0.14);
+  font-weight: 700;
+}
+
+.hudDeltaBad {
+  color: var(--color-status-critical);
+  border-color: rgba(184, 92, 115, 0.35);
+  background: rgba(184, 92, 115, 0.12);
+  font-weight: 700;
+}

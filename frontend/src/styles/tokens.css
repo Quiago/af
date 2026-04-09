@@ -1,0 +1,189 @@
+:root {
+  /* ── Backgrounds — steel blue scale (primary/100–200) ────────── */
+  --color-bg:            #EEF1F5;   /* primary/100 — steel blue tint */
+  --color-surface:       #F0F1F1;   /* grey/100 — near-white neutral */
+  --color-surface-2:     #EEEFF4;   /* tertiary/100 — lavender tint */
+  --color-surface-soft:  rgba(238, 241, 245, 0.80);
+  --color-canvas:        #171D23;   /* primary/700 — dark navy viewport */
+  --color-surface-glass: rgba(240, 241, 241, 0.82);
+
+  /* Backwards-compat */
+  --color-bg-primary:  var(--color-bg);
+  --color-bg-surface:  var(--color-surface);
+  --color-bg-card:     var(--color-surface-2);
+  --color-bg-elevated: var(--color-surface);
+  --color-bg-active:   var(--color-primary-soft);
+
+  /* ── Brand primary: deep steel blue (primary/500) ────────────── */
+  --color-primary:        #4E5D6D;
+  --color-primary-hover:  #313B46;
+  --color-primary-active: #171D23;
+  --color-primary-soft:   rgba(78, 93, 109, 0.10);
+  --color-primary-border: rgba(78, 93, 109, 0.22);
+
+  /* ── Operational accent: sage teal (secondary/400) ───────────── */
+  --color-live:     #658D88;
+  --color-live-dim: rgba(101, 141, 136, 0.12);
+
+  /* ── Deep accent triad — for buttons, card highlights, animations */
+  --color-deep-teal:   #2F4441;   /* secondary/600 */
+  --color-deep-slate:  #32364D;   /* tertiary/600 */
+  --color-deep-purple: #322A5C;   /* quaternary/600 */
+
+  /* Backwards-compat */
+  --color-accent:      var(--color-live);
+  --color-accent-dim:  var(--color-live-dim);
+  --color-accent-glow: rgba(101, 141, 136, 0.22);
+
+  /* ── Cool/warm atmospheric accents ──────────────────────────────────────── */
+  --color-accent-cool:      #8EA7C1;
+  --color-accent-cool-soft: rgba(142, 167, 193, 0.22);
+  --color-accent-warm:      #A2DDD6;
+  --color-accent-warm-soft: rgba(162, 221, 214, 0.20);
+
+  /* ── Text — steel blue scale ─────────────────────────────────── */
+  --color-text:         #171D23;   /* primary/700 */
+  --color-text-muted:   #4E5D6D;   /* primary/500 */
+  --color-text-faint:   #6D8196;   /* primary/400 */
+  --color-text-inverse: #FFFFFF;
+
+  /* Backwards-compat */
+  --color-text-primary:   var(--color-text);
+  --color-text-secondary: var(--color-text-muted);
+
+  /* ── Status semantic ─────────────────────────────────────────── */
+  --color-status-ok:       #496763;   /* secondary/500 teal */
+  --color-status-warning:  #C29048;   /* keep amber — no warm in palette */
+  --color-status-critical: #B85C73;   /* keep rose */
+  --color-status-offline:  #7C7F83;   /* grey/400 */
+
+  /* Backwards-compat */
+  --color-blue:  #6D8196;
+  --color-amber: #C29048;
+  --color-red:   #B85C73;
+
+  /* ── Zone temperature ────────────────────────────────────────── */
+  --color-zone-cold-bg:     rgba(142, 167, 193, 0.15);   /* primary/300 base */
+  --color-zone-cold-border: rgba(142, 167, 193, 0.30);
+  --color-zone-ok-bg:       rgba(101, 141, 136, 0.12);   /* secondary/400 base */
+  --color-zone-ok-border:   rgba(101, 141, 136, 0.28);
+  --color-zone-warm-bg:     rgba(194, 144, 72, 0.12);
+  --color-zone-warm-border: rgba(194, 144, 72, 0.28);
+  --color-zone-hot-bg:      rgba(184, 92, 115, 0.10);
+  --color-zone-hot-border:  rgba(184, 92, 115, 0.26);
+
+  /* ── Borders — steel blue scale ──────────────────────────────── */
+  --color-border:   #8EA7C1;   /* primary/300 */
+  --color-divider:  #BFCDDC;   /* primary/200 */
+
+  /* Backwards-compat */
+  --border-color:        var(--color-primary-border);
+  --border-color-subtle: var(--color-divider);
+
+  /* ── Glass — vibrancy system ─────────────────────────────────── */
+  --color-glass-bg:            rgba(240, 241, 241, 0.82);
+  --color-glass-bg-strong:     rgba(240, 241, 241, 0.94);
+  --color-glass-border:        rgba(142, 167, 193, 0.40);
+  --color-glass-border-strong: rgba(142, 167, 193, 0.62);
+  --color-glass-stroke:        rgba(142, 167, 193, 0.28);
+
+  /* ── Spacing ──────────────────────────────────────────────────── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* ── Typography — Manrope + IBM Plex Mono ─────────────────────── */
+  --font-display: 'Manrope', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body:    'Manrope', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono:    'IBM Plex Mono', 'SFMono-Regular', ui-monospace, monospace;
+  --font-sans:    var(--font-body);
+
+  --text-xs:   12px;
+  --text-sm:   14px;
+  --text-base: 16px;
+  --text-md:   18px;
+  --text-lg:   22px;
+  --text-xl:   28px;
+  --text-2xl:  36px;
+
+  --leading-tight:  1.05;
+  --leading-snug:   1.20;
+  --leading-normal: 1.50;
+
+  --tracking-tight:  -0.03em;
+  --tracking-normal: -0.01em;
+  --tracking-wide:    0.04em;
+  --tracking-wider:   0.08em;
+
+  /* ── Border radius ────────────────────────────────────────────── */
+  --radius-xs:   6px;
+  --radius-sm:   8px;
+  --radius-md:   14px;
+  --radius-lg:   20px;
+  --radius-xl:   28px;
+  --radius-full: 999px;
+
+  /* Backwards-compat */
+  --border-radius-sm: var(--radius-xs);
+  --border-radius-md: var(--radius-sm);
+  --border-radius-lg: var(--radius-md);
+
+  /* ── Shadows ──────────────────────────────────────────────────── */
+  --shadow-xs:    0 1px 3px rgba(49, 59, 70, 0.10);
+  --shadow-sm:    0 2px 8px rgba(49, 59, 70, 0.12);
+  --shadow-md:    0 8px 24px rgba(49, 59, 70, 0.14);
+  --shadow-lg:    0 16px 40px rgba(49, 59, 70, 0.16);
+  --shadow-soft:  0 8px 30px rgba(78, 93, 109, 0.12);
+  --shadow-panel: 0 10px 28px rgba(49, 59, 70, 0.10);
+  --shadow-glow:  0 0 0 1px rgba(142, 167, 193, 0.38),
+                  0 16px 40px rgba(142, 167, 193, 0.14);
+
+  /* Backwards-compat */
+  --shadow-card:     var(--shadow-sm);
+  --shadow-elevated: var(--shadow-md);
+
+  /* ── Atmospheric gradient ─────────────────────────────────────── */
+  --gradient-atmosphere:
+    radial-gradient(circle at 20% 30%, rgba(142, 167, 193, 0.20), transparent 42%),
+    radial-gradient(circle at 80% 25%, rgba(131, 180, 174, 0.18), transparent 38%),
+    linear-gradient(180deg, #F0F1F1 0%, #EEF1F5 100%);
+
+  /* ── Card gradient — steel-blue tint → surface (used on every card) */
+  --gradient-card:
+    linear-gradient(135deg, var(--color-primary-soft) 0%, var(--color-surface) 100%);
+
+  /* ── Panel gradient — subtle atmospheric wash for sidebar/column panels */
+  --gradient-panel:
+    radial-gradient(circle at 10% 0%, rgba(142, 167, 193, 0.12), transparent 50%),
+    linear-gradient(180deg, #F0F1F1 0%, #EEF1F5 100%);
+
+  --gradient-hero:
+    linear-gradient(
+      90deg,
+      rgba(142, 167, 193, 0.28) 0%,
+      rgba(238, 241, 245, 0) 42%,
+      rgba(131, 180, 174, 0.28) 100%
+    );
+
+  /* ── Animation ────────────────────────────────────────────────── */
+  --ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-soft:     cubic-bezier(0.16, 1, 0.30, 1);
+  --duration-fast: 140ms;
+  --duration-base: 220ms;
+  --duration-slow: 420ms;
+
+  --transition-fast: var(--duration-fast) var(--ease-standard);
+  --transition-base: var(--duration-base) var(--ease-standard);
+  --transition-slow: var(--duration-slow) var(--ease-soft);
+
+  /* ── Chart ────────────────────────────────────────────────────── */
+  --chart-bg:        #171D23;
+  --chart-grid:      rgba(255, 255, 255, 0.04);
+  --chart-crosshair: rgba(78, 93, 109, 0.55);
+}

@@ -1,0 +1,662 @@
+[
+  {
+    "id": "TC001",
+    "title": "Cold start loads dashboard and reaches connected live state",
+    "description": "Verifies the app loads the default Digital Twin view, completes the initial snapshot load, connects to live updates, and shows a connected status with visible live data.",
+    "category": "App Shell & Navigation",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the app root route"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the initial loading state to finish"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the topbar live status indicates a connected state"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the Digital Twin view displays zone and equipment information"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC002",
+    "title": "Live status reflects connecting to connected lifecycle",
+    "description": "Verifies the status pill transitions through connection lifecycle states during initial load to reach a connected state.",
+    "category": "WebSocket Live Connection",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the app root route"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the topbar live status to indicate a connecting state"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the topbar live status to indicate a connected state"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the app indicates it is connected to live updates"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC003",
+    "title": "Sidebar tab switching preserves mounted view state",
+    "description": "Verifies switching between sidebar views does not reset the previously mounted Digital Twin view state when returning.",
+    "category": "App Shell & Navigation",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the app root route"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the initial loading state to finish"
+      },
+      {
+        "type": "action",
+        "description": "Trigger a user-visible state change on the Digital Twin view (such as expanding a panel or toggling an available view control)"
+      },
+      {
+        "type": "action",
+        "description": "Click the sidebar navigation item for another view"
+      },
+      {
+        "type": "action",
+        "description": "Click the sidebar navigation item to return to the Digital Twin view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the previously changed Digital Twin UI state is preserved"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC004",
+    "title": "Auto-reconnect restores live connected state after an unexpected disconnect",
+    "description": "Verifies that after the live connection drops, the app transitions to reconnecting and returns to a connected state with live updates resuming.",
+    "category": "WebSocket Live Connection",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the app root route"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the topbar live status to indicate a connected state"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the app to enter a reconnecting state after a connection drop occurs in the environment"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the topbar live status to return to a connected state"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the app is connected again and the live monitoring UI is functioning"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC005",
+    "title": "Digital Twin renders live snapshot and updates visualizations over time",
+    "description": "Verifies the Digital Twin view renders zone temperature mapping and equipment status from the initial snapshot and continues updating from live snapshots.",
+    "category": "Digital Twin (Dashboard)",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the app root route"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the initial loading state to finish"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the topbar live status to indicate a connected state"
+      },
+      {
+        "type": "action",
+        "description": "Wait long enough for at least one subsequent live update to be received"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the 3D viewer and floor-plan overlay are displayed with zone and equipment information"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the displayed live zone/equipment state updates over time"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC006",
+    "title": "Receives streaming updates without interrupting the current view",
+    "description": "Verifies that while connected, repeated live snapshot updates are applied and the current page remains stable and interactive.",
+    "category": "WebSocket Live Connection",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the app root route"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the topbar live status to indicate a connected state"
+      },
+      {
+        "type": "action",
+        "description": "Wait long enough for multiple live updates to be received"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the Digital Twin view continues to display live zone/equipment data without breaking or resetting"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC007",
+    "title": "Shows disconnected status when live connection is unavailable and last-known data remains usable",
+    "description": "Verifies that when the app cannot establish live connectivity, the topbar shows a disconnected state while the UI remains usable with last-known snapshot data.",
+    "category": "App Shell & Navigation",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the app root route"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the app to finish attempting to initialize live monitoring"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the topbar live status indicates a disconnected state"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the main dashboard content still renders with a usable snapshot view or an appropriate empty-state"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC008",
+    "title": "Simulation baseline comparison displays delta alongside live updates",
+    "description": "Verifies requesting the simulation baseline displays the delta comparison UI while the live stream continues updating without breaking the comparison view.",
+    "category": "Digital Twin (Dashboard)",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the app root route"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the initial loading state to finish"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the topbar live status to indicate a connected state"
+      },
+      {
+        "type": "action",
+        "description": "Trigger loading of the simulation baseline comparison"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the simulation comparison to finish loading"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a simulation delta comparison bar is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the live monitoring UI continues updating while the delta comparison remains visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC009",
+    "title": "Backoff retry eventually reconnects after initial connection failure",
+    "description": "Verifies that when the initial live connection attempt fails, the client retries with backoff and can later establish a connected live state.",
+    "category": "WebSocket Live Connection",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the app root route"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the topbar live status to indicate a disconnected or retrying state"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the app to retry connecting"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the topbar live status eventually indicates a connected state"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC010",
+    "title": "Open Predictive Maintenance and view an equipment health summary",
+    "description": "Verifies the user can open Predictive Maintenance and see equipment listed with health/status indicators.",
+    "category": "Predictive Maintenance",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the sidebar/tab to open the Predictive Maintenance view"
+      },
+      {
+        "type": "action",
+        "description": "Wait for equipment data to finish loading"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an equipment list/tree is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify at least one equipment health/status indicator is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC011",
+    "title": "Malformed live snapshot degrades gracefully and manual refresh recovers",
+    "description": "Verifies that when malformed live snapshot data is encountered, the dashboard remains usable using the last good snapshot and a manual refresh restores a corrected view.",
+    "category": "Digital Twin (Dashboard)",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the app root route"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the initial loading state to finish"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the app to indicate a live update parsing problem in a non-blocking way (if surfaced)"
+      },
+      {
+        "type": "action",
+        "description": "Trigger a manual refresh of the snapshot data"
+      },
+      {
+        "type": "action",
+        "description": "Wait for refresh loading to finish"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the dashboard renders zone and equipment information after refresh"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC012",
+    "title": "View 24h and 7d historical report charts",
+    "description": "Verifies the user can open Building Report and switch from 24h to 7d range and the charts render for each range.",
+    "category": "Building Report",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the sidebar/tab to open the Building Report view"
+      },
+      {
+        "type": "action",
+        "description": "Select the 24h range"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the report data to finish loading"
+      },
+      {
+        "type": "action",
+        "description": "Select the 7d range"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the report data to finish loading"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify performance and savings charts are displayed for the selected range"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC013",
+    "title": "Select an AHU and view 24h equipment timeline",
+    "description": "Verifies the user can select an AHU in the TreeView and load the 24h timeline chart for that equipment.",
+    "category": "Predictive Maintenance",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the sidebar/tab to open the Predictive Maintenance view"
+      },
+      {
+        "type": "action",
+        "description": "Wait for equipment data to finish loading"
+      },
+      {
+        "type": "action",
+        "description": "Select the AHU-1 equipment in the tree"
+      },
+      {
+        "type": "action",
+        "description": "Select the 24h timeline range for the equipment"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the equipment timeline to finish loading"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the equipment detail panel is displayed for the selected asset"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a 24h timeline chart is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC014",
+    "title": "Switch 7d to 30d and verify report updates",
+    "description": "Verifies the user can switch from 7d to 30d and the report refreshes to show updated chart data for the new range.",
+    "category": "Building Report",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the sidebar/tab to open the Building Report view"
+      },
+      {
+        "type": "action",
+        "description": "Select the 7d range"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the report data to finish loading"
+      },
+      {
+        "type": "action",
+        "description": "Select the 30d range"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the report data to finish loading"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the report charts reflect the newly selected range"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC015",
+    "title": "Preserve TreeView selection when switching away and back",
+    "description": "Verifies the selected equipment remains selected and its details remain visible after switching to another view and returning.",
+    "category": "Predictive Maintenance",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the sidebar/tab to open the Predictive Maintenance view"
+      },
+      {
+        "type": "action",
+        "description": "Wait for equipment data to finish loading"
+      },
+      {
+        "type": "action",
+        "description": "Select the AHU-1 equipment in the tree"
+      },
+      {
+        "type": "action",
+        "description": "Click the sidebar/tab to open the Building Report view"
+      },
+      {
+        "type": "action",
+        "description": "Click the sidebar/tab to return to the Predictive Maintenance view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the previously selected equipment is still selected"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the asset detail panel is still showing the selected equipment"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC016",
+    "title": "Keep the selected report range when switching away and back",
+    "description": "Verifies the app preserves the Building Report selected range and view state when navigating away and returning via sidebar tabs.",
+    "category": "Building Report",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the sidebar/tab to open the Building Report view"
+      },
+      {
+        "type": "action",
+        "description": "Select the 30d range"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the report data to finish loading"
+      },
+      {
+        "type": "action",
+        "description": "Click the sidebar/tab to open the Predictive Maintenance view"
+      },
+      {
+        "type": "action",
+        "description": "Click the sidebar/tab to return to the Building Report view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the report is still showing the previously selected 30d range"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC017",
+    "title": "Handle zero-only savings data with guidance and allow retry",
+    "description": "Verifies that when savings data is empty/zero-only the report shows guidance and the user can retry with a broader range.",
+    "category": "Building Report",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the sidebar/tab to open the Building Report view"
+      },
+      {
+        "type": "action",
+        "description": "Select the 7d range"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the report data to finish loading"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a no-savings-data guidance message is visible"
+      },
+      {
+        "type": "action",
+        "description": "Select the 30d range"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the report data to finish loading"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify savings chart data is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC018",
+    "title": "Show and clear loading state when switching report ranges",
+    "description": "Verifies that changing the report range shows a loading state and then returns to a loaded chart view.",
+    "category": "Building Report",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the sidebar/tab to open the Building Report view"
+      },
+      {
+        "type": "action",
+        "description": "Select the 24h range"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the report data to finish loading"
+      },
+      {
+        "type": "action",
+        "description": "Select the 7d range"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a loading indicator is visible for the report"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the report data to finish loading"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the loading indicator is no longer visible and charts are displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC019",
+    "title": "Display heatmap and benchmark comparisons for a selected range",
+    "description": "Verifies the Building Report view displays the thermal heatmap and benchmark comparisons for the selected time range.",
+    "category": "Building Report",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the sidebar/tab to open the Building Report view"
+      },
+      {
+        "type": "action",
+        "description": "Select the 24h range"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the report data to finish loading"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a thermal heatmap is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify benchmark comparison data is displayed"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC020",
+    "title": "Show offline guidance for an unknown equipment asset",
+    "description": "Verifies the user can attempt to view an unknown asset and the UI shows an offline/not-found remediation state rather than a broken detail view.",
+    "category": "Predictive Maintenance",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the sidebar/tab to open the Predictive Maintenance view"
+      },
+      {
+        "type": "action",
+        "description": "Wait for equipment data to finish loading"
+      },
+      {
+        "type": "action",
+        "description": "Use the equipment selection UI to navigate to an asset with id chiller-2 if available"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the asset detail area to update"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the asset detail area indicates the asset is offline or unavailable with remediation guidance"
+      }
+    ],
+    "priority": "Low"
+  }
+]

@@ -1,0 +1,20 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:5173",
+  "loginUser": "cquiala12@gmail.com",
+  "loginPassword": "Carlos2000",
+  "executionArgs": {
+    "projectName": "af",
+    "projectPath": "/home/quiala/Datos/TRIPOLAR/af/frontend",
+    "testIds": [],
+    "additionalInstruction": "",
+    "serverMode": "development",
+    "envs": {
+      "API_KEY": "sk-user-ULa-uOQDFnFIdloQ10dHfLwSODXZVAQXJEdCy_eamKp6ty0RWcSUNadMNW5RZH4GSGymR6kXL94gfHL13tupu8nERv7xM6U5HUFPh8nwDK6l3CkyDHSVkecnrWQ9UiNmwh0"
+    }
+  },
+  "serverPort": 43643,
+  "proxy": "http://97d21613-58ae-4d13-9739-fdf23c9dd1a1:lf27JtgqJhEyvzjBROnTOYlHfism93v9@tun.testsprite.com:8080"
+}

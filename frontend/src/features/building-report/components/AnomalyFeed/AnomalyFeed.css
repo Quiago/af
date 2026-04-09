@@ -1,0 +1,240 @@
+/* ── Feed shell ───────────────────────────────────────────────── */
+.anomaly-feed {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ── Summary strip ────────────────────────────────────────────── */
+.anom-strip {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 0 12px;
+  border-bottom: 1px solid var(--color-divider);
+  flex-shrink: 0;
+}
+
+.anom-divider {
+  width: 1px;
+  height: 28px;
+  background: var(--color-divider);
+}
+
+.anom-count {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 44px;
+}
+
+.anom-count-val {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.anom-count-lbl {
+  font-family: var(--font-body);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--color-text-faint);
+}
+
+.anom-count--crit .anom-count-val { color: var(--color-status-critical); }
+.anom-count--warn .anom-count-val { color: var(--color-status-warning); }
+.anom-count--info .anom-count-val { color: var(--color-text-muted); }
+
+.anom-waste-total {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+
+.anom-waste-val {
+  font-family: var(--font-mono);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--color-status-critical);
+  letter-spacing: -0.01em;
+}
+
+.anom-waste-lbl {
+  font-family: var(--font-body);
+  font-size: 8px;
+  color: var(--color-text-faint);
+  font-weight: 600;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+/* ── Empty state ──────────────────────────────────────────────── */
+.anom-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.anom-empty-icon {
+  font-size: 32px;
+  color: var(--color-status-ok);
+}
+
+.anom-empty-msg {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.anom-empty-sub {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-text-faint);
+}
+
+/* ── List ─────────────────────────────────────────────────────── */
+.anom-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 12px 0 4px;
+}
+
+.anom-list::-webkit-scrollbar { width: 3px; }
+.anom-list::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+}
+
+/* ── Card ─────────────────────────────────────────────────────── */
+.anom-card {
+  display: flex;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: border-color var(--duration-fast) var(--ease-standard),
+              box-shadow var(--duration-fast) var(--ease-standard);
+}
+
+.anom-card:hover {
+  border-color: var(--color-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.anom-sev-bar {
+  width: 3px;
+  flex-shrink: 0;
+}
+
+.anom-card--critical .anom-sev-bar { background: var(--color-status-critical); }
+.anom-card--warning  .anom-sev-bar { background: var(--color-status-warning); }
+.anom-card--info     .anom-sev-bar { background: var(--color-text-faint); }
+
+/* Subtle tint on critical cards */
+.anom-card--critical {
+  background: rgba(184, 92, 115, 0.04);
+}
+
+.anom-body {
+  flex: 1;
+  padding: 9px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.anom-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.anom-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+/* Severity dot */
+.anom-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.anom-dot--critical { background: var(--color-status-critical); }
+.anom-dot--warning  { background: var(--color-status-warning); }
+.anom-dot--info     { background: var(--color-text-faint); }
+
+.anom-title {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.anom-loc {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 600;
+  color: var(--color-text-faint);
+  background: var(--color-surface);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-xs);
+  padding: 1px 5px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+/* AED cost */
+.anom-cost {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.anom-cost-val {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-status-critical);
+}
+
+.anom-cost-period {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--color-text-faint);
+}
+
+/* Cause + action */
+.anom-cause {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--color-text-muted);
+  line-height: 1.45;
+}
+
+.anom-action {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-primary);
+  font-weight: 500;
+}

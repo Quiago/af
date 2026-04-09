@@ -1,0 +1,27 @@
+.health-gauge {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.health-gauge-svg {
+  width: 100px;
+  height: 80px;
+  overflow: visible;
+}
+
+.gauge-score {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 700;
+  fill: var(--color-text);
+}
+
+.gauge-label {
+  font-family: var(--font-body);
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  fill: var(--color-text-faint);
+}

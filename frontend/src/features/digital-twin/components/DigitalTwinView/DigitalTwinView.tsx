@@ -18,14 +18,11 @@ const FLOORS = [
   { id: 2, label: 'F3' },
 ]
 
-function fmt1(n: number): string { return n.toFixed(1) }
-function fmt0(n: number): string { return n.toFixed(0) }
-
 export function DigitalTwinView() {
   const [viewMode,    setViewMode]    = useState<'3d' | 'plan'>('3d')
   const [hoveredZone, setHoveredZone] = useState<string | null>(null)
 
-  const { liveData, isSimulating } = useDigitalTwinData()
+  const { liveData } = useDigitalTwinData()
   const simulationProjection = useDashboardStore((s) => s.simulationProjection)
   const kpis                 = useDashboardStore((s) => s.snapshot?.kpis)
 

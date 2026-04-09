@@ -127,8 +127,8 @@ function chartOptions() {
       horzLines: { color: 'rgba(255,255,255,0.04)', style: LineStyle.Dotted },
     },
     crosshair: {
-      vertLine: { color: 'rgba(110,130,150,0.40)', width: 1, style: LineStyle.Dashed },
-      horzLine: { color: 'rgba(110,130,150,0.40)', width: 1, style: LineStyle.Dashed },
+      vertLine: { color: 'rgba(110,130,150,0.40)', style: LineStyle.Dashed },
+      horzLine: { color: 'rgba(110,130,150,0.40)', style: LineStyle.Dashed },
     },
     timeScale: {
       borderColor:    'rgba(191,205,220,0.14)',

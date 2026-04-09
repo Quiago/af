@@ -120,12 +120,6 @@ export function RecommendationsPanel() {
     return improved ? 'trend--good' : 'trend--bad'
   }
 
-  const energyTrend     = trendPct(kpis?.energy_kwh, baseline?.energy_kwh)
-  const energyClass     = trendClass(kpis?.energy_kwh, baseline?.energy_kwh)
-  const discomfortTrend = trendPct(kpis?.thermal_discomfort, baseline?.thermal_discomfort)
-  const discomfortClass = trendClass(kpis?.thermal_discomfort, baseline?.thermal_discomfort)
-  const costTrend       = trendPct(kpis?.cost_total, baseline?.cost_total)
-  const costClass       = trendClass(kpis?.cost_total, baseline?.cost_total)
 
   function handleSimulate(rec: Recommendation) {
     setSimulationProjection({
@@ -266,19 +260,6 @@ export function RecommendationsPanel() {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function KpiRow({
-  label, value, trend, trendCls,
-}: { label: string; value: string; trend: string | null; trendCls: string }) {
-  return (
-    <div className="kpi-row">
-      <span className="kpi-lbl">{label}</span>
-      <div className="kpi-right">
-        <span className="kpi-val">{value}</span>
-        {trend && <span className={`kpi-trend ${trendCls}`}>{trend}</span>}
-      </div>
-    </div>
-  )
-}
 
 function RecCard({
   rec,

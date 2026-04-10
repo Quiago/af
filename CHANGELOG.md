@@ -1,3 +1,7 @@
+### 2026-04-10 FEAT — Real-time Plotly Sankey HVAC energy flow (backend/experiments)
+- What: Built sankey_hvac/ package (boptest_client.py, energy_flows.py, sankey_builder.py, sankey_dash.py, sankey_static.py) — live Dash app polls BOPTEST /results every 5s and renders full HVAC pipeline Sankey (Grid→Plant→AHU→5 zones) with KPI strip and discomfort highlighting
+- Why: Visualize end-to-end energy flows for the multizone_office_simple_air test case to support HVAC optimization analysis
+
 ### 2026-04-08 FIX — Machine Health asset tree now shows hotel equipment in mock mode
 - What: MockWebSocketManager gained onStatusChange + connectionStatus to match real WS interface; websocket.ts exports mockWsManager when VITE_MOCKED_DATA=true, populating snapshot.equipment → TreeView renders all 5 hotel assets (Chiller C1, AHU Floors 1–3, AHU Floors 4–6, Primary Filter Bank, Cooling Tower CT1)
 - Why: VITE_USE_MOCK was never set, so mockWebSocket.ts never activated and the asset tree showed empty

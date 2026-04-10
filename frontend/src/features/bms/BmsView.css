@@ -1,0 +1,80 @@
+.bms-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--color-bg);
+}
+
+/* ── Status bar ─────────────────────────────────── */
+.bms-status-bar {
+  padding: 4px var(--space-4);
+  background: var(--color-primary-soft);
+  border-bottom: 1px solid var(--color-primary-border);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-primary);
+  text-align: center;
+  flex-shrink: 0;
+  animation: blink 2s ease-in-out infinite;
+}
+
+.bms-status-bar--stale {
+  background: rgba(194, 144, 72, 0.08);
+  border-color: rgba(194, 144, 72, 0.22);
+  color: var(--color-status-warning);
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.6; }
+}
+
+/* ── Body: graph + control panel side by side ───── */
+.bms-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.bms-graph-slot {
+  flex: 1 1 65%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-3);
+  gap: var(--space-3);
+  min-height: 0;
+}
+
+.bms-control-slot {
+  flex: 0 0 340px;
+  min-width: 280px;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Narrow viewport: stack control panel below */
+@media (max-width: 960px) {
+  .bms-body {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .bms-graph-slot {
+    flex: none;
+    min-height: 380px;
+  }
+  .bms-control-slot {
+    flex: none;
+    max-width: 100%;
+    height: auto;
+    border-left: none;
+    border-top: 1px solid var(--color-divider);
+  }
+}

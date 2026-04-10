@@ -57,7 +57,7 @@ export type Resolution = '1m' | '1h' | '1d' | '1y'
 /** A single preset controls both the fetch window and the bucket resolution. */
 export type TimePreset = '1h' | '1d' | '1M' | '1y'
 
-export type ActiveView = 'dash' | 'report' | 'maint'
+export type ActiveView = 'dash' | 'report' | 'maint' | 'bms'
 
 // ─── Benchmark ────────────────────────────────────────────────────────────────
 

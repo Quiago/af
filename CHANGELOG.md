@@ -1,3 +1,7 @@
+### 2026-04-10 FEAT — BMS tab: live HVAC topology, KPI strip, and control panel
+- What: New "BMS" tab in the frontend sidebar; BmsView composes a 4-column SVG topology (plant→AHU→duct→zones) with live BOPTEST data, a 6-card KPI strip with inline sparklines, and a debounced control panel with AHU sliders + per-zone setpoint accordions and a consumption-impact delta box; backend adds GET /api/v1/bms/snapshot and POST /api/v1/bms/control; ActiveView type extended to include 'bms'
+- Why: Provide a real-time BMS operator view so engineers can observe live HVAC state and manually override setpoints directly from the platform
+
 ### 2026-04-10 FEAT — Real-time Plotly Sankey HVAC energy flow (backend/experiments)
 - What: Built sankey_hvac/ package (boptest_client.py, energy_flows.py, sankey_builder.py, sankey_dash.py, sankey_static.py) — live Dash app polls BOPTEST /results every 5s and renders full HVAC pipeline Sankey (Grid→Plant→AHU→5 zones) with KPI strip and discomfort highlighting
 - Why: Visualize end-to-end energy flows for the multizone_office_simple_air test case to support HVAC optimization analysis

@@ -10,7 +10,7 @@ import time
 
 from fastapi import APIRouter, HTTPException, Request
 
-from api.v1.boptest.service import BOPTESTError, advance, get_results
+from api.v1.boptest.service import BOPTESTError, advance
 from .schemas import BmsControlPayload, BmsSnapshot
 
 logger = logging.getLogger(__name__)
@@ -23,7 +23,8 @@ _CP_WATER  = 4186.0   # J/(kg·K)
 # Illinois grid carbon factor (kg CO₂ / kWh) — EIA 2019 average for Illinois
 _CO2_FACTOR = 0.341
 
-# ── All BOPTEST sensor points needed ─────────────────────────────────────────
+# ── All BOPTEST sensor points the BMS cares about ────────────────────────────
+# (used only for default-value lookup — the actual values come from advance() outputs)
 _POINTS: list[str] = [
     # Chiller
     "chi_reaPChi_y",
@@ -39,8 +40,8 @@ _POINTS: list[str] = [
     "heaPum_reaFloSup_y",
     # AHU fans & pumps
     "hvac_reaAhu_PFanSup_y",
-    "hvac_reaAhu_PPumCoo_y",        # cooling coil pump (separate from CHW dist pump)
-    "hvac_reaAhu_PPumHea_y",        # heating coil pump (separate from HW dist pump)
+    "hvac_reaAhu_PPumCoo_y",
+    "hvac_reaAhu_PPumHea_y",
     # AHU air-side
     "hvac_reaAhu_TMix_y",
     "hvac_reaAhu_TSup_y",
@@ -80,49 +81,43 @@ _POINTS: list[str] = [
 _TEMP_POINTS = {p for p in _POINTS if "_T" in p}
 
 
-def _last(raw: dict, key: str, default: float = 0.0) -> float:
-    """Extract the latest value from a BOPTEST result time-series."""
-    series = raw.get(key)
-    if isinstance(series, list) and series:
-        v = series[-1]
-        return float(v) if v is not None else default
-    return default
-
-
 def _water_kw(flow_m3s: float, t_hot_k: float, t_cold_k: float) -> float:
     """Thermal power transferred by a water loop [kW]."""
     return flow_m3s * _RHO_WATER * _CP_WATER * abs(t_hot_k - t_cold_k) / 1000.0
 
 
+def _read_val(outputs: dict, key: str) -> float:
+    """Read a scalar sensor value from advance() outputs.
+
+    advance() returns plain scalars: {"hvac_reaAhu_TSup_y": 289.5, ...}
+    Temperatures default to 293.15 K (room temp) when missing or suspiciously low.
+    """
+    raw = outputs.get(key)
+    if raw is None:
+        return 293.15 if key in _TEMP_POINTS else 0.0
+    v = float(raw)
+    if key in _TEMP_POINTS and v < 50.0:
+        return 293.15   # guard: BOPTEST returns 0 for off sensors
+    return v
+
+
 @router.get("/snapshot", response_model=BmsSnapshot)
 async def bms_snapshot(request: Request) -> BmsSnapshot:
-    """Fetch latest BOPTEST measurements and return enriched BMS snapshot."""
+    """Build BMS snapshot from the latest advance() outputs stored by the polling loop.
+
+    Reads app.state.bms_raw_outputs — set by main.py on every simulation step.
+    No extra BOPTEST API call is needed; advance() already returns all outputs.
+    """
     testid: str | None = getattr(request.app.state, "testid", None)
     if not testid:
         raise HTTPException(status_code=503, detail="Simulation not ready — no testid")
 
-    current_snapshot = getattr(request.app.state, "current_snapshot", None)
-    sim_time = float(
-        getattr(current_snapshot, "simulation_time", None) or 60.0
-    ) if current_snapshot else 60.0
+    raw: dict | None = getattr(request.app.state, "bms_raw_outputs", None)
+    if not raw:
+        raise HTTPException(status_code=503, detail="Simulation not ready — no data yet")
 
-    start_time = max(0.0, sim_time - 60.0)
-
-    try:
-        raw = await get_results(testid, _POINTS, start_time, sim_time)
-    except BOPTESTError as exc:
-        logger.error("BMS snapshot get_results failed: %s", exc)
-        raise HTTPException(status_code=502, detail=f"BOPTEST error: {exc}") from exc
-
-    # ── Extract sensor values (temperature defaults to 293.15 K if missing) ──
-    vals: dict[str, float] = {}
-    for p in _POINTS:
-        default = 293.15 if p in _TEMP_POINTS else 0.0
-        v = _last(raw, p, default)
-        # Guard: BOPTEST occasionally returns 0 for temperature sensors when off
-        if p in _TEMP_POINTS and v < 50.0:
-            v = 293.15
-        vals[p] = v
+    # ── Extract sensor values from advance() scalar outputs ──────────────────
+    vals: dict[str, float] = {p: _read_val(raw, p) for p in _POINTS}
 
     # ── Total electrical consumption (all consumers) ─────────────────────────
     total_elec_kw = (
@@ -158,6 +153,8 @@ async def bms_snapshot(request: Request) -> BmsSnapshot:
 
     co2_kg_per_hr = total_elec_kw * _CO2_FACTOR
     chw_flow_lph  = vals["chi_reaFloSup_y"] * 3600.0 * 1000.0
+
+    sim_time = float(raw.get("time", 0.0))
 
     return BmsSnapshot(
         timestamp=time.time(),

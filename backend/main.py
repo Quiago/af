@@ -143,6 +143,9 @@ async def _polling_loop_inner(app: FastAPI) -> None:  # noqa: C901
         batch.append((wall_ts, outputs))
         step_count += 1
 
+        # Keep bms_raw_outputs current so /bms/snapshot always has data
+        app.state.bms_raw_outputs = outputs
+
         # Publish first snapshot so /snapshot stops returning 503 immediately
         if step_count == 1:
             app.state.current_snapshot = build_snapshot(outputs, {}, {})
@@ -236,6 +239,7 @@ async def _polling_loop_inner(app: FastAPI) -> None:  # noqa: C901
         await save_measurements_bulk([(wall_ts, outputs)])
         await save_checkpoint(sim_secs, wall_ts, testid)
         snapshot = build_snapshot(outputs, forecast, kpis)
+        app.state.bms_raw_outputs  = outputs
         app.state.current_snapshot = snapshot
         await ws_manager.broadcast(snapshot.model_dump())
 
@@ -257,6 +261,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.settings         = settings
     app.state.testid           = None
     app.state.current_snapshot = None
+    app.state.bms_raw_outputs  = None   # latest advance() outputs for BMS endpoint
     app.state.benchmark_result = None
 
     # ── BOPTEST ────────────────────────────────────────────────────────────────

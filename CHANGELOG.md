@@ -1,3 +1,7 @@
+### 2026-04-12 FIX — BMS snapshot reads from polling loop state instead of get_results()
+- What: Replaced redundant get_results() call in bms_snapshot with app.state.bms_raw_outputs set by the advance() loop in main.py; eliminates the 60-second history-window bug that returned empty data during backfill; fixed sim_time_s to read from raw["time"]
+- Why: get_results() with a 60s window fails during backfill (step=86400s) and adds a redundant BOPTEST round-trip; advance() already returns all outputs
+
 ### 2026-04-12 FIX — BMS tab: HVAC topology order, unit conversions, sensor coverage, and KPI accuracy
 - What: Corrected AHU air-flow order to ASHRAE spec (Mix→HeaCoil→CooCoil→Fan); fixed control unit bugs (temps now sent in K, fractions in 0–1); added missing sensors (PPumCoo, PPumHea, THeaCoiSup/Ret, 8 weather fields); replaced PUE with ChillerCOP + HP_COP; updated EMPTY_SNAPSHOT and KpiHistory to match new BmsSnapshot schema
 - Why: Expert HVAC review against BOPTEST multizone_office_simple_air spec revealed wrong component order, wrong control units sent to API, and missing pump/coil power readings that caused zeroed KPIs

@@ -38,6 +38,14 @@
   margin-bottom: var(--space-1);
 }
 
+.cp-unit-note {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--color-text-faint);
+  padding: 2px var(--space-1);
+  margin-bottom: var(--space-1);
+}
+
 /* ── Slider row ─────────────────────────────────── */
 .cp-slider-row {
   background: var(--color-surface-2);

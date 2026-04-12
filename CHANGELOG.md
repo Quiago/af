@@ -1,3 +1,7 @@
+### 2026-04-12 FIX — BMS tab: HVAC topology order, unit conversions, sensor coverage, and KPI accuracy
+- What: Corrected AHU air-flow order to ASHRAE spec (Mix→HeaCoil→CooCoil→Fan); fixed control unit bugs (temps now sent in K, fractions in 0–1); added missing sensors (PPumCoo, PPumHea, THeaCoiSup/Ret, 8 weather fields); replaced PUE with ChillerCOP + HP_COP; updated EMPTY_SNAPSHOT and KpiHistory to match new BmsSnapshot schema
+- Why: Expert HVAC review against BOPTEST multizone_office_simple_air spec revealed wrong component order, wrong control units sent to API, and missing pump/coil power readings that caused zeroed KPIs
+
 ### 2026-04-10 FEAT — BMS tab: live HVAC topology, KPI strip, and control panel
 - What: New "BMS" tab in the frontend sidebar; BmsView composes a 4-column SVG topology (plant→AHU→duct→zones) with live BOPTEST data, a 6-card KPI strip with inline sparklines, and a debounced control panel with AHU sliders + per-zone setpoint accordions and a consumption-impact delta box; backend adds GET /api/v1/bms/snapshot and POST /api/v1/bms/control; ActiveView type extended to include 'bms'
 - Why: Provide a real-time BMS operator view so engineers can observe live HVAC state and manually override setpoints directly from the platform

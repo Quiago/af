@@ -1,405 +1,333 @@
+/**
+ * TopologyGraph — SVG single-line diagram matching the actual BOPTEST
+ * multizone_office_simple_air schematic (ASHRAE VAV 2A2-21232).
+ *
+ * Air-side flow (left→right inside AHU):
+ *   Return Air + OA → Mixing Box → HEATING COIL → COOLING COIL → Supply Fan
+ *   → Supply Duct → VAV terminal boxes (with reheat) → 5 Zone spaces
+ *
+ * Water loops:
+ *   Blue  (CHW): Chiller → CHW Pump → Cooling Coil valve → return
+ *   Red   (HHW): Heat Pump → HW Pump → Heating Coil valve + zone reheat → return
+ *
+ * Sensor names match BOPTEST output spec exactly.
+ */
 import type { BmsSnapshot } from './bms.types'
-import { kToC, zoneBorderColor, zoneTempStatus } from './bms.utils'
+import { kToC, zoneTempStatus, zoneBorderColor } from './bms.utils'
 import './TopologyGraph.css'
 
-// ── Layout constants ──────────────────────────────────────────────────────────
-const VB_W  = 1160
-const VB_H  = 540
-const NW    = 138   // node width
-const NH    = 52    // node height
-const NR    = 7     // node corner radius
+// ── Viewbox & node geometry ───────────────────────────────────────────────────
+const VB_W = 1180
+const VB_H = 550
+const NW   = 138   // node width
+const NH   = 50    // node height
+const NR   = 7
 
 // Column x-centers
-const CX1 = 95     // plant
-const CX2 = 330    // AHU interior
-const CX3 = 570    // duct
-const CX4 = 810    // zones (left edge of zone boxes)
+const CX_PLANT = 88    // plant equipment
+const CX_AHU   = 295   // AHU components
+const CX_DUCT  = 510   // supply duct
+const CX_ZONE  = 780   // zone boxes (left edge, not center)
 
-// Plant node y-centers (column 1)
-const Y_CHILLER   = 80
-const Y_CHW_PUMP  = 175
-const Y_HP        = 340
-const Y_HW_PUMP   = 435
-const Y_OA        = 505
+// AHU dashed container
+const AHU_X = CX_AHU - NW / 2 - 14
+const AHU_Y = 38
+const AHU_W = NW + 28
+const AHU_H = VB_H - 50
 
-// AHU node y-centers (column 2)
-const Y_COOL_COIL = 100
-const Y_HEAT_COIL = 225
-const Y_MIX       = 335
-const Y_FAN       = 430
-const Y_RET_AIR   = 505
+// Plant nodes (column 1) — y-centers
+const Y_CHILLER  = 78
+const Y_CHW_PUMP = 170
+const Y_HP       = 330
+const Y_HW_PUMP  = 422
+const Y_OA       = 500
 
-// Duct y-center (column 3)
-const Y_DUCT = 290
+// AHU nodes (column 2) — y-centers
+// Correct order per spec: Mix → Heating Coil → Cooling Coil → Supply Fan
+const Y_MIX      = 95
+const Y_HEA_COIL = 210   // HEATING COIL first (spec: heating before cooling)
+const Y_COO_COIL = 325   // COOLING COIL second
+const Y_FAN      = 435
+const Y_RET_AIR  = 500
 
-// Zone y-centers (column 4)
-const ZONE_YS: Record<string, number> = {
-  nor: 55,
-  wes: 160,
-  cor: 270,
-  eas: 375,
-  sou: 480,
+// Duct & zones
+const Y_DUCT = 280
+
+// Zone y-centers (5 zones, equal spacing)
+const ZONE_Y: Record<string, number> = {
+  nor: 52,
+  wes: 152,
+  cor: 252,
+  eas: 352,
+  sou: 452,
 }
-
-const ZONE_LABELS: Record<string, string> = {
+const ZONE_LABEL: Record<string, string> = {
   nor: 'NOR', wes: 'WES', cor: 'COR', eas: 'EAS', sou: 'SOU',
 }
 
-// AHU dashed container bounds
-const AHU_X  = CX2 - NW / 2 - 12
-const AHU_Y  = 60
-const AHU_W  = NW + 24
-const AHU_H  = VB_H - 74
+// ── Colors ───────────────────────────────────────────────────────────────────
+const C_CHW  = '#3B82F6'
+const C_HHW  = '#EF4444'
+const C_AIR  = '#6B7280'
+const C_SA   = '#22AA44'   // supply air to zones
 
-// ── SVG helpers ───────────────────────────────────────────────────────────────
+// ── SVG primitives ────────────────────────────────────────────────────────────
 
 interface NodeProps {
-  cx: number
-  cy: number
+  cx: number; cy: number
   title: string
-  line1?: string
-  line2?: string
-  borderColor?: string
-  fillColor?: string
-  textColor?: string
+  line1?: string; line2?: string
+  border?: string; fill?: string; textColor?: string
 }
 
-function EquipNode({
-  cx, cy, title, line1, line2,
-  borderColor = 'rgba(142,167,193,0.30)',
-  fillColor   = '#111c2b',
-  textColor   = '#9CA3AF',
+function Node({ cx, cy, title, line1, line2,
+  border = 'rgba(142,167,193,0.28)',
+  fill   = '#101c2e',
+  textColor = '#9CA3AF',
 }: NodeProps) {
   const x = cx - NW / 2
   const y = cy - NH / 2
+  const hasLines = !!(line1 || line2)
   return (
     <g>
-      <rect
-        x={x} y={y} width={NW} height={NH} rx={NR}
-        fill={fillColor}
-        stroke={borderColor}
-        strokeWidth="1.5"
-      />
-      <text
-        x={cx} y={cy - (line1 ? 10 : 3)}
-        textAnchor="middle"
-        fontFamily="IBM Plex Mono, monospace"
-        fontSize="10"
-        fontWeight="700"
-        fill="#E5E7EB"
-        letterSpacing="0.05em"
-      >
+      <rect x={x} y={y} width={NW} height={NH} rx={NR}
+        fill={fill} stroke={border} strokeWidth="1.5" />
+      <text x={cx} y={cy - (hasLines ? 10 : 2)}
+        textAnchor="middle" fontFamily="IBM Plex Mono, monospace"
+        fontSize="10" fontWeight="700" fill="#E5E7EB" letterSpacing="0.04em">
         {title}
       </text>
-      {line1 && (
-        <text
-          x={cx} y={cy + 6}
-          textAnchor="middle"
-          fontFamily="IBM Plex Mono, monospace"
-          fontSize="8.5"
-          fill={textColor}
-        >
-          {line1}
-        </text>
-      )}
-      {line2 && (
-        <text
-          x={cx} y={cy + 18}
-          textAnchor="middle"
-          fontFamily="IBM Plex Mono, monospace"
-          fontSize="8.5"
-          fill={textColor}
-        >
-          {line2}
-        </text>
-      )}
+      {line1 && <text x={cx} y={cy + 5}
+        textAnchor="middle" fontFamily="IBM Plex Mono, monospace"
+        fontSize="8.5" fill={textColor}>{line1}</text>}
+      {line2 && <text x={cx} y={cy + 17}
+        textAnchor="middle" fontFamily="IBM Plex Mono, monospace"
+        fontSize="8.5" fill={textColor}>{line2}</text>}
     </g>
   )
 }
 
-// ── Pipe / duct path helpers ───────────────────────────────────────────────────
-
-/** Horizontal elbow: from right of (x1,y1) → left of (x2,y2) via midpoint. */
-function elbowH(
-  x1: number, y1: number,
-  x2: number, y2: number,
-  color: string,
-  dashed = false,
-  strokeW = 1.5,
-) {
-  const mx = (x1 + x2) / 2
-  const d  = `M ${x1} ${y1} H ${mx} V ${y2} H ${x2}`
+function Pipe(props: {
+  d: string; color: string; dashed?: boolean; w?: number
+}) {
   return (
-    <path
-      d={d}
-      fill="none"
-      stroke={color}
-      strokeWidth={strokeW}
-      strokeDasharray={dashed ? '5 4' : undefined}
-      strokeLinecap="round"
-    />
+    <path d={props.d} fill="none" stroke={props.color}
+      strokeWidth={props.w ?? 1.5}
+      strokeDasharray={props.dashed ? '5 4' : undefined}
+      strokeLinecap="round" />
   )
 }
 
-/** Straight line. */
-function line(
-  x1: number, y1: number,
-  x2: number, y2: number,
-  color: string,
-  dashed = false,
-  strokeW = 1.5,
-) {
+function Arrow(props: { x: number; y: number; color: string }) {
+  const { x, y, color } = props
   return (
-    <line
-      x1={x1} y1={y1} x2={x2} y2={y2}
-      stroke={color}
-      strokeWidth={strokeW}
-      strokeDasharray={dashed ? '5 4' : undefined}
-      strokeLinecap="round"
-    />
+    <polygon points={`${x},${y - 4} ${x + 8},${y} ${x},${y + 4}`} fill={color} />
   )
 }
-
-/** Small arrowhead triangle at (x,y) pointing right. */
-function arrowR(x: number, y: number, color: string) {
-  return (
-    <polygon
-      points={`${x},${y - 4} ${x + 7},${y} ${x},${y + 4}`}
-      fill={color}
-    />
-  )
-}
-
-// ── Color palette ─────────────────────────────────────────────────────────────
-const C_CHW   = '#3B82F6'   // chilled water
-const C_HHW   = '#EF4444'   // hot water
-const C_AIR   = '#6B7280'   // air (gray)
-const C_ZONE  = '#22AA44'   // supply air to zones
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-interface TopologyGraphProps {
-  snapshot: BmsSnapshot
-}
+interface TopologyGraphProps { snapshot: BmsSnapshot }
 
 export function TopologyGraph({ snapshot: s }: TopologyGraphProps) {
-  const chi_kw     = s.chi_reaPChi_y / 1000
-  const chwPump_kw = s.chi_reaPPumDis_y / 1000
-  const hp_kw      = s.heaPum_reaPHeaPum_y / 1000
-  const hwPump_kw  = s.heaPum_reaPPumDis_y / 1000
-  const fan_kw     = s.hvac_reaAhu_PFanSup_y / 1000
+  const t  = (k: number, d = 1): string => `${kToC(k).toFixed(d)}°C`
+  const kw = (w: number): string => `${(w / 1000).toFixed(2)}kW`
 
-  const t = (k: number, d = 1) => `${kToC(k).toFixed(d)}°C`
+  // Right / left / top / bottom edges
+  const r  = (cx: number): number => cx + NW / 2
+  const l  = (cx: number): number => cx - NW / 2
+  const bt = (cy: number): number => cy + NH / 2
+  const tp = (cy: number): number => cy - NH / 2
 
   return (
     <div className="bms-topo-wrap">
-      <svg
-        viewBox={`0 0 ${VB_W} ${VB_H}`}
-        preserveAspectRatio="xMidYMid meet"
-        className="bms-topo-svg"
-      >
-        {/* ── AHU dashed container ────────────────────────────────── */}
-        <rect
-          x={AHU_X} y={AHU_Y} width={AHU_W} height={AHU_H}
-          rx={10}
-          fill="rgba(31,41,55,0.5)"
-          stroke="#374151"
-          strokeWidth="1"
-          strokeDasharray="6 4"
-        />
-        <text
-          x={AHU_X + 10} y={AHU_Y + 16}
-          fontFamily="IBM Plex Mono, monospace"
-          fontSize="9"
-          fontWeight="600"
-          fill="#4B5563"
-          letterSpacing="0.1em"
-        >
-          AHU
-        </text>
+      <svg viewBox={`0 0 ${VB_W} ${VB_H}`}
+        preserveAspectRatio="xMidYMid meet" className="bms-topo-svg">
 
-        {/* ── CHW water loop connections (blue) ───────────────────── */}
-        {/* Chiller → CHW Pump (vertical) */}
-        {line(CX1, Y_CHILLER + NH / 2, CX1, Y_CHW_PUMP - NH / 2, C_CHW)}
-        {/* CHW Pump → Cooling Coil (elbow right) */}
-        {elbowH(CX1 + NW / 2, Y_CHW_PUMP, CX2 - NW / 2, Y_COOL_COIL, C_CHW)}
-        {arrowR(CX2 - NW / 2 - 7, Y_COOL_COIL, C_CHW)}
+        {/* ── AHU dashed container ─────────────────────────────── */}
+        <rect x={AHU_X} y={AHU_Y} width={AHU_W} height={AHU_H} rx={10}
+          fill="rgba(28,40,58,0.55)" stroke="#374151"
+          strokeWidth="1" strokeDasharray="6 4" />
+        <text x={AHU_X + 10} y={AHU_Y + 14}
+          fontFamily="IBM Plex Mono, monospace" fontSize="8" fontWeight="700"
+          fill="#4B5563" letterSpacing="0.12em">AHU</text>
 
-        {/* ── Hot water loop connections (red) ────────────────────── */}
-        {/* Heat Pump → HW Pump (vertical) */}
-        {line(CX1, Y_HP + NH / 2, CX1, Y_HW_PUMP - NH / 2, C_HHW)}
-        {/* HW Pump → Heating Coil (elbow right) */}
-        {elbowH(CX1 + NW / 2, Y_HW_PUMP, CX2 - NW / 2, Y_HEAT_COIL, C_HHW)}
-        {arrowR(CX2 - NW / 2 - 7, Y_HEAT_COIL, C_HHW)}
+        {/* ── CHW PIPE: Chiller → CHW Pump (vertical) ─────────── */}
+        <Pipe color={C_CHW}
+          d={`M ${CX_PLANT} ${bt(Y_CHILLER)} V ${tp(Y_CHW_PUMP)}`} />
 
-        {/* ── Air connections (gray dashed) ────────────────────────── */}
-        {/* OA → Mixed Air (elbow right) */}
-        {elbowH(CX1 + NW / 2, Y_OA, CX2 - NW / 2, Y_MIX, C_AIR, true)}
-        {arrowR(CX2 - NW / 2 - 7, Y_MIX, C_AIR)}
+        {/* CHW Pump → Cooling Coil (right elbow) */}
+        <Pipe color={C_CHW}
+          d={`M ${r(CX_PLANT)} ${Y_CHW_PUMP} H ${AHU_X - 4} V ${Y_COO_COIL} H ${l(CX_AHU)}`} />
+        <Arrow x={l(CX_AHU) - 8} y={Y_COO_COIL} color={C_CHW} />
 
-        {/* Cooling Coil → Mixed Air (vertical dashed inside AHU) */}
-        {line(CX2, Y_COOL_COIL + NH / 2, CX2, Y_HEAT_COIL - NH / 2, C_AIR, true)}
-        {line(CX2, Y_HEAT_COIL + NH / 2, CX2, Y_MIX - NH / 2, C_AIR, true)}
-        {/* Mixed Air → Supply Fan */}
-        {line(CX2, Y_MIX + NH / 2, CX2, Y_FAN - NH / 2, C_AIR, true)}
+        {/* ── HHW PIPE: HP → HW Pump (vertical) ──────────────── */}
+        <Pipe color={C_HHW}
+          d={`M ${CX_PLANT} ${bt(Y_HP)} V ${tp(Y_HW_PUMP)}`} />
 
-        {/* Supply Fan → Supply Duct (elbow right) */}
-        {elbowH(CX2 + NW / 2, Y_FAN, CX3 - NW / 2, Y_DUCT, C_AIR, true, 2)}
-        {arrowR(CX3 - NW / 2 - 7, Y_DUCT, C_AIR)}
+        {/* HW Pump → Heating Coil (right elbow — goes UP) */}
+        <Pipe color={C_HHW}
+          d={`M ${r(CX_PLANT)} ${Y_HW_PUMP} H ${AHU_X - 4} V ${Y_HEA_COIL} H ${l(CX_AHU)}`} />
+        <Arrow x={l(CX_AHU) - 8} y={Y_HEA_COIL} color={C_HHW} />
 
-        {/* Return Air → loop label (just a stub line going left) */}
-        {line(CX2 - NW / 2, Y_RET_AIR, CX1 + NW / 2 + 10, Y_RET_AIR, C_AIR, true)}
+        {/* ── AIR FLOW inside AHU (vertical dashed, gray) ─────── */}
+        {/* OA → Mix Box (from left) */}
+        <Pipe color={C_AIR} dashed
+          d={`M ${r(CX_PLANT)} ${Y_OA} H ${AHU_X - 4} V ${Y_MIX} H ${l(CX_AHU)}`} />
+        <Arrow x={l(CX_AHU) - 8} y={Y_MIX} color={C_AIR} />
 
-        {/* ── Zone supply lines (green) ────────────────────────────── */}
-        {Object.entries(ZONE_YS).map(([zoneId, zy]) => {
-          const status = zoneTempStatus(
-            s[`hvac_reaZon${zoneId.charAt(0).toUpperCase() + zoneId.slice(1)}_TZon_y` as keyof BmsSnapshot] as number
-          )
-          const zoneColor = zoneBorderColor(status)
+        {/* Return Air → Mix Box (implied via arrow label) */}
+        {/* Mix Box → Heating Coil (vertical) */}
+        <Pipe color={C_AIR} dashed
+          d={`M ${CX_AHU} ${bt(Y_MIX)} V ${tp(Y_HEA_COIL)}`} />
+
+        {/* Heating Coil → Cooling Coil */}
+        <Pipe color={C_AIR} dashed
+          d={`M ${CX_AHU} ${bt(Y_HEA_COIL)} V ${tp(Y_COO_COIL)}`} />
+
+        {/* Cooling Coil → Supply Fan */}
+        <Pipe color={C_AIR} dashed
+          d={`M ${CX_AHU} ${bt(Y_COO_COIL)} V ${tp(Y_FAN)}`} />
+
+        {/* Return Air ← zones (stub going left from Return Air node) */}
+        <Pipe color={C_AIR} dashed
+          d={`M ${l(CX_AHU)} ${Y_RET_AIR} H ${AHU_X - 30}`} />
+
+        {/* ── Supply Fan → Supply Duct ─────────────────────────── */}
+        <Pipe color={C_AIR} dashed w={2}
+          d={`M ${r(CX_AHU)} ${Y_FAN} H ${(r(CX_AHU) + l(CX_DUCT)) / 2} V ${Y_DUCT} H ${l(CX_DUCT)}`} />
+        <Arrow x={l(CX_DUCT) - 8} y={Y_DUCT} color={C_AIR} />
+
+        {/* ── Supply Duct → Each Zone (green) ─────────────────── */}
+        {(Object.entries(ZONE_Y) as [string, number][]).map(([zoneId, zy]) => {
+          const capId = zoneId.charAt(0).toUpperCase() + zoneId.slice(1)
+          const tK = s[`hvac_reaZon${capId}_TZon_y` as keyof BmsSnapshot] as number
+          const status = zoneTempStatus(tK)
+          const zColor = zoneBorderColor(status)
           return (
             <g key={zoneId}>
-              {elbowH(CX3 + NW / 2, Y_DUCT, CX4 - 2, zy, zoneColor, false, 2)}
-              {arrowR(CX4 - 9, zy, zoneColor)}
+              <Pipe color={zColor} w={2}
+                d={`M ${r(CX_DUCT)} ${Y_DUCT} H ${(r(CX_DUCT) + CX_ZONE - 2)} V ${zy} H ${CX_ZONE - 2}`} />
+              <Arrow x={CX_ZONE - 10} y={zy} color={zColor} />
             </g>
           )
         })}
 
-        {/* ── PLANT COLUMN nodes ────────────────────────────────────── */}
-        <EquipNode
-          cx={CX1} cy={Y_CHILLER}
-          title="CHILLER"
-          line1={`P: ${chi_kw.toFixed(1)}kW`}
-          line2={`Ts:${t(s.chi_reaTSup_y)} Tr:${t(s.chi_reaTRet_y)}`}
-          borderColor={C_CHW}
-          textColor={C_CHW}
-        />
-        <EquipNode
-          cx={CX1} cy={Y_CHW_PUMP}
-          title="CHW PUMP"
-          line1={`P: ${chwPump_kw.toFixed(2)}kW`}
-          borderColor={C_CHW}
-          textColor={C_CHW}
-        />
-        <EquipNode
-          cx={CX1} cy={Y_HP}
-          title="HEAT PUMP"
-          line1={`P: ${hp_kw.toFixed(1)}kW`}
-          line2={`Ts:${t(s.heaPum_reaTSup_y)} Tr:${t(s.heaPum_reaTRet_y)}`}
-          borderColor={C_HHW}
-          textColor={C_HHW}
-        />
-        <EquipNode
-          cx={CX1} cy={Y_HW_PUMP}
-          title="HW PUMP"
-          line1={`P: ${hwPump_kw.toFixed(2)}kW`}
-          borderColor={C_HHW}
-          textColor={C_HHW}
-        />
-        <EquipNode
-          cx={CX1} cy={Y_OA}
-          title="OUTSIDE AIR"
-          line1={`T: ${t(s.weaSta_reaWeaTDryBul_y)}`}
-          borderColor="#6B7280"
-          textColor="#9CA3AF"
-        />
+        {/* ── PLANT NODES ───────────────────────────────────────── */}
+        <Node cx={CX_PLANT} cy={Y_CHILLER} title="CHILLER"
+          line1={`P:${kw(s.chi_reaPChi_y)}  Q:${kToC(s.chi_reaTSup_y).toFixed(1)}°C`}
+          line2={`Tr:${t(s.chi_reaTRet_y)}  F:${s.chi_reaFloSup_y.toFixed(3)}m³/s`}
+          border={C_CHW} textColor={C_CHW} />
 
-        {/* ── AHU COLUMN nodes ─────────────────────────────────────── */}
-        <EquipNode
-          cx={CX2} cy={Y_COOL_COIL}
-          title="COOL COIL"
-          line1={`Ts:${t(s.hvac_reaAhu_TCooCoiSup_y)} Tr:${t(s.hvac_reaAhu_TCooCoiRet_y)}`}
-          borderColor={C_CHW}
-          textColor={C_CHW}
-        />
-        <EquipNode
-          cx={CX2} cy={Y_HEAT_COIL}
-          title="HEAT COIL"
-          line1={`Ts:${t(s.heaPum_reaTSup_y)}`}
-          borderColor={C_HHW}
-          textColor={C_HHW}
-        />
-        <EquipNode
-          cx={CX2} cy={Y_MIX}
-          title="MIXED AIR"
+        <Node cx={CX_PLANT} cy={Y_CHW_PUMP} title="CHW PUMP"
+          line1={`P: ${kw(s.chi_reaPPumDis_y)}`}
+          border={C_CHW} textColor={C_CHW} />
+
+        <Node cx={CX_PLANT} cy={Y_HP} title="HEAT PUMP"
+          line1={`P:${kw(s.heaPum_reaPHeaPum_y)}  Ts:${t(s.heaPum_reaTSup_y)}`}
+          line2={`Tr:${t(s.heaPum_reaTRet_y)}  F:${s.heaPum_reaFloSup_y.toFixed(3)}m³/s`}
+          border={C_HHW} textColor={C_HHW} />
+
+        <Node cx={CX_PLANT} cy={Y_HW_PUMP} title="HW PUMP"
+          line1={`P: ${kw(s.heaPum_reaPPumDis_y)}`}
+          border={C_HHW} textColor={C_HHW} />
+
+        <Node cx={CX_PLANT} cy={Y_OA} title="OUTSIDE AIR"
+          line1={`T: ${t(s.weaSta_reaWeaTDryBul_y)}  RH:${Math.round(s.weaSta_reaWeaRelHum_y * 100)}%`}
+          border="#6B7280" textColor="#9CA3AF" />
+
+        {/* ── AHU NODES — in correct order: Mix→HeaCoil→CooCoil→Fan ── */}
+        <Node cx={CX_AHU} cy={Y_MIX} title="MIXING BOX"
           line1={`Tmix: ${t(s.hvac_reaAhu_TMix_y)}`}
-          borderColor="#6B7280"
-          textColor="#9CA3AF"
-        />
-        <EquipNode
-          cx={CX2} cy={Y_FAN}
-          title="SUPPLY FAN"
-          line1={`P:${fan_kw.toFixed(2)}kW  V:${s.hvac_reaAhu_V_flow_sup_y.toFixed(3)}m³/s`}
-          borderColor="#6B7280"
-          textColor="#9CA3AF"
-        />
-        <EquipNode
-          cx={CX2} cy={Y_RET_AIR}
-          title="RETURN AIR"
+          line2={`Vret: ${s.hvac_reaAhu_V_flow_ret_y.toFixed(3)} m³/s`}
+          border="#6B7280" textColor="#9CA3AF" />
+
+        {/* HEATING COIL — comes FIRST per ASHRAE VAV spec */}
+        <Node cx={CX_AHU} cy={Y_HEA_COIL} title="HEAT COIL"
+          line1={`Ts:${t(s.hvac_reaAhu_THeaCoiSup_y)}  Tr:${t(s.hvac_reaAhu_THeaCoiRet_y)}`}
+          line2={`Pump: ${kw(s.hvac_reaAhu_PPumHea_y)}`}
+          border={C_HHW} textColor={C_HHW} />
+
+        {/* COOLING COIL — comes SECOND per ASHRAE VAV spec */}
+        <Node cx={CX_AHU} cy={Y_COO_COIL} title="COOL COIL"
+          line1={`Ts:${t(s.hvac_reaAhu_TCooCoiSup_y)}  Tr:${t(s.hvac_reaAhu_TCooCoiRet_y)}`}
+          line2={`Pump: ${kw(s.hvac_reaAhu_PPumCoo_y)}`}
+          border={C_CHW} textColor={C_CHW} />
+
+        <Node cx={CX_AHU} cy={Y_FAN} title="SUPPLY FAN"
+          line1={`P:${kw(s.hvac_reaAhu_PFanSup_y)}  V:${s.hvac_reaAhu_V_flow_sup_y.toFixed(3)}m³/s`}
+          line2={`dp:${Math.round(s.hvac_reaAhu_dp_sup_y)}Pa  Ts:${t(s.hvac_reaAhu_TSup_y)}`}
+          border="#6B7280" textColor="#9CA3AF" />
+
+        <Node cx={CX_AHU} cy={Y_RET_AIR} title="RETURN AIR"
           line1={`Tr:${t(s.hvac_reaAhu_TRet_y)}  V:${s.hvac_reaAhu_V_flow_ret_y.toFixed(3)}m³/s`}
-          borderColor="#6B7280"
-          textColor="#9CA3AF"
-        />
+          border="#6B7280" textColor="#9CA3AF" />
 
-        {/* ── DUCT node ────────────────────────────────────────────── */}
-        <EquipNode
-          cx={CX3} cy={Y_DUCT}
-          title="SUPPLY DUCT"
-          line1={`dp:${Math.round(s.hvac_reaAhu_dp_sup_y)}Pa`}
-          line2={`V:${s.hvac_reaAhu_V_flow_sup_y.toFixed(3)}m³/s`}
-          borderColor="#6B7280"
-          textColor="#9CA3AF"
-        />
+        {/* ── SUPPLY DUCT ──────────────────────────────────────── */}
+        <Node cx={CX_DUCT} cy={Y_DUCT} title="SUPPLY DUCT"
+          line1={`dp: ${Math.round(s.hvac_reaAhu_dp_sup_y)} Pa`}
+          line2={`V: ${s.hvac_reaAhu_V_flow_sup_y.toFixed(3)} m³/s`}
+          border="#6B7280" textColor="#9CA3AF" />
 
-        {/* ── ZONE nodes ───────────────────────────────────────────── */}
-        {(['nor', 'wes', 'cor', 'eas', 'sou'] as const).map((zoneId) => {
+        {/* ── ZONE NODES (VAV terminal + space) ────────────────── */}
+        {(Object.entries(ZONE_Y) as [string, number][]).map(([zoneId, zy]) => {
           const capId = zoneId.charAt(0).toUpperCase() + zoneId.slice(1)
           const tZonK = s[`hvac_reaZon${capId}_TZon_y` as keyof BmsSnapshot] as number
+          const tSupK = s[`hvac_reaZon${capId}_TSup_y` as keyof BmsSnapshot] as number
           const co2   = s[`hvac_reaZon${capId}_CO2Zon_y` as keyof BmsSnapshot] as number
           const flow  = s[`hvac_reaZon${capId}_V_flow_y` as keyof BmsSnapshot] as number
           const status = zoneTempStatus(tZonK)
-          const color  = zoneBorderColor(status)
-          const zy     = ZONE_YS[zoneId]
+          const zColor = zoneBorderColor(status)
+
           return (
             <g key={zoneId}>
-              <rect
-                x={CX4} y={zy - NH / 2}
-                width={NW} height={NH} rx={NR}
-                fill="#0f1c2e"
-                stroke={color}
-                strokeWidth="2"
-              />
-              <text
-                x={CX4 + NW / 2} y={zy - 11}
-                textAnchor="middle"
-                fontFamily="IBM Plex Mono, monospace"
-                fontSize="10"
-                fontWeight="700"
-                fill="#E5E7EB"
-                letterSpacing="0.05em"
-              >
-                {`ZONE ${ZONE_LABELS[zoneId]}`}
+              <rect x={CX_ZONE} y={zy - 30} width={NW + 10} height={60} rx={NR}
+                fill="#0c1928" stroke={zColor} strokeWidth="2" />
+              {/* VAV box indicator */}
+              <rect x={CX_ZONE + 2} y={zy - 28} width={16} height={56} rx={4}
+                fill="rgba(107,114,128,0.15)" stroke="#374151" strokeWidth="0.5" />
+              <text x={CX_ZONE + 10} y={zy + 2}
+                textAnchor="middle" fontFamily="IBM Plex Mono, monospace"
+                fontSize="6" fill="#6B7280" transform={`rotate(-90,${CX_ZONE + 10},${zy})`}>
+                VAV
               </text>
-              <text
-                x={CX4 + NW / 2} y={zy + 3}
-                textAnchor="middle"
-                fontFamily="IBM Plex Mono, monospace"
-                fontSize="8.5"
-                fill={color}
-              >
-                {`T:${kToC(tZonK).toFixed(1)}°C  CO₂:${Math.round(co2)}ppm`}
+              {/* Zone label */}
+              <text x={CX_ZONE + 74} y={zy - 15}
+                textAnchor="middle" fontFamily="IBM Plex Mono, monospace"
+                fontSize="10" fontWeight="700" fill="#E5E7EB" letterSpacing="0.04em">
+                {`ZONE ${ZONE_LABEL[zoneId]}`}
               </text>
-              <text
-                x={CX4 + NW / 2} y={zy + 15}
-                textAnchor="middle"
-                fontFamily="IBM Plex Mono, monospace"
-                fontSize="8.5"
-                fill="#6B7280"
-              >
-                {`V:${flow.toFixed(3)} m³/s`}
+              <text x={CX_ZONE + 74} y={zy - 1}
+                textAnchor="middle" fontFamily="IBM Plex Mono, monospace"
+                fontSize="8.5" fill={zColor}>
+                {`T:${kToC(tZonK).toFixed(1)}°C   CO₂:${Math.round(co2)} ppm`}
+              </text>
+              <text x={CX_ZONE + 74} y={zy + 13}
+                textAnchor="middle" fontFamily="IBM Plex Mono, monospace"
+                fontSize="8.5" fill="#6B7280">
+                {`Tsup:${kToC(tSupK).toFixed(1)}°C  V:${flow.toFixed(3)}m³/s`}
               </text>
             </g>
           )
         })}
+
+        {/* ── Legend ───────────────────────────────────────────── */}
+        <g transform={`translate(${VB_W - 170}, ${VB_H - 60})`}>
+          {[
+            [C_CHW,  'CHW (chilled water)'],
+            [C_HHW,  'HHW (hot water)'],
+            [C_AIR,  'Air (dashed)'],
+            [C_SA,   'Supply air'],
+          ].map(([color, label], i) => (
+            <g key={label} transform={`translate(0, ${i * 13})`}>
+              <line x1={0} y1={4} x2={18} y2={4} stroke={color} strokeWidth="2"
+                strokeDasharray={color === C_AIR ? '4 3' : undefined} />
+              <text x={22} y={8} fontFamily="IBM Plex Mono, monospace"
+                fontSize="7.5" fill="#6B7280">{label}</text>
+            </g>
+          ))}
+        </g>
+
       </svg>
     </div>
   )

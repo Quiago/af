@@ -1,11 +1,12 @@
 .bms-kpi-strip {
   display: flex;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-divider);
   flex-shrink: 0;
   overflow-x: auto;
+  align-items: stretch;
 }
 
 .bms-kpi-strip::-webkit-scrollbar { height: 3px; }
@@ -14,23 +15,50 @@
   border-radius: var(--radius-full);
 }
 
+/* Sim time clock — narrower card */
+.bms-kpi-clock {
+  flex: 0 0 140px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-primary-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+
+.bms-kpi-clock-val {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-primary);
+  letter-spacing: var(--tracking-tight);
+  white-space: nowrap;
+}
+
 .bms-kpi-card {
   flex: 1;
-  min-width: 130px;
+  min-width: 116px;
   background: var(--color-glass-bg);
   border: 1px solid var(--color-glass-border);
   border-radius: var(--radius-md);
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-2) var(--space-3);
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
   backdrop-filter: blur(10px);
+}
+
+.bms-kpi-card--weather {
+  flex: 0 0 200px;
+  min-width: 200px;
 }
 
 .bms-kpi-label {
   font-family: var(--font-mono);
-  font-size: 9px;
-  font-weight: 600;
+  font-size: 8px;
+  font-weight: 700;
   letter-spacing: var(--tracking-wider);
   text-transform: uppercase;
   color: var(--color-text-faint);
@@ -44,7 +72,7 @@
 
 .bms-kpi-value {
   font-family: var(--font-mono);
-  font-size: var(--text-lg);
+  font-size: 19px;
   font-weight: 700;
   letter-spacing: var(--tracking-tight);
   transition: color var(--duration-base);
@@ -52,15 +80,24 @@
 
 .bms-kpi-unit {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 9px;
   color: var(--color-text-faint);
   white-space: nowrap;
 }
 
+.bms-kpi-weather-row {
+  display: flex;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--color-text-faint);
+  margin-top: 1px;
+}
+
 .bms-kpi-spark {
   width: 100%;
-  height: 28px;
+  height: 26px;
   display: block;
-  margin-top: 3px;
+  margin-top: 2px;
   overflow: visible;
 }

@@ -1,3 +1,7 @@
+### 2026-04-15 FIX — Solar orientation + weather param animations in Digital Twin
+- What: solarIncidenceZone() rewritten from first principles using actual camera-basis sun direction — blinking now correctly tracks North face (morning–noon) then West face (afternoon) matching what the sun orb visibly illuminates; glass facades pulse blue/orange on ext-temp change + persistent tint proportional to temperature deviation; exponential fog driven by humidity slider (0% = clear, 100% = thick mist); 250-point wind particle stream drifts in +X with opacity/speed proportional to wind km/h
+- Why: Blink was incorrectly on South zone (physics-based solarIncidenceZone used real-world geometry, not camera-aligned sun); weather spinners had no visual feedback in the 3D view
+
 ### 2026-04-14 FEAT — Time-of-day slider, solar zone incidence blinking, weather spinners
 - What: Bottom control bar on Digital Twin canvas with 0–24h time slider + NOW button; sun-facing zone (East/South/West) pulses orange/red based on simulated hour; right side EXT TEMP/HUMIDITY/WIND hold-to-repeat numeric spinners; ActionTimeline and floorBar positions adjusted upward to clear new bar
 - Why: Enables time-scrubbing for solar load simulation and manual weather parameter overrides for what-if analysis

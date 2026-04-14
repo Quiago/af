@@ -147,6 +147,9 @@ export function DigitalTwinView() {
             hoveredZone={hoveredZone}
             onHoverZone={setHoveredZone}
             simHour={simHour}
+            extTemp={extTemp}
+            humidity={humidity}
+            windSpeed={windSpeed}
           />
         </div>
 

@@ -445,12 +445,33 @@ function makeFloorOutline(): THREE.LineSegments {
 
 // ─── Solar zone incidence ─────────────────────────────────────────────────────
 
+/**
+ * Returns which building facade the artistic sun orb is currently illuminating.
+ * Uses the same camera-basis formula as sunDisplayPos() so the blinking zone
+ * always matches the face the sun visually appears to shine on.
+ *
+ * From the SE camera position the sun arc moves through world-space:
+ *   - Early day  → strong −Z component → North face (nor) illuminated
+ *   - Late day   → strong −X component → West face  (wes) illuminated
+ *   - Crossover ≈ 13:10 when |dz| = |dx|
+ * East and South faces are never directly lit from this camera orientation.
+ */
 function solarIncidenceZone(hour: number): ZoneState['id'] | null {
   const h = ((hour % 24) + 24) % 24
-  if (h >= 5.5  && h < 10.5) return 'eas'
-  if (h >= 10.5 && h < 14.5) return 'sou'
-  if (h >= 14.5 && h < 18.5) return 'wes'
-  return null
+  if (h < 5.5 || h > 19.5) return null
+
+  const t  = Math.max(0, Math.min(1, (h - 6) / 14))
+  const sx = Math.cos(Math.PI * t)
+  const sy = 0.42 + Math.sin(Math.PI * t) * 0.06
+
+  // World direction of the sun (same formula as sunDisplayPos, no normalisation needed for comparison)
+  const dx = _CF[0] + sy * _CU[0] + sx * 0.50 * _CR[0]
+  const dz = _CF[2] + sy * _CU[2] + sx * 0.50 * _CR[2]
+
+  // Outward normal of North face = (0,0,−1) → dot with sun dir = −dz
+  // Outward normal of West  face = (−1,0,0) → dot with sun dir = −dx
+  // The face with the higher dot product faces the sun
+  return (-dz >= -dx) ? 'nor' : 'wes'
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -462,6 +483,9 @@ export function useBuildingScene(
   highlightedZone: string | null,
   onHoverZone:     (id: string | null) => void,
   simHour?:        number,
+  extTemp?:        number,   // °C — drives glass tint flash
+  humidity?:       number,   // 0–100 % — drives fog density
+  windSpeed?:      number,   // km/h — drives particle stream
 ): void {
   const activeFloor = useDashboardStore((s) => s.selectedFloor)
   const setFloor    = useDashboardStore((s) => s.setSelectedFloor)
@@ -476,15 +500,21 @@ export function useBuildingScene(
   const onHoverRef     = useRef(onHoverZone)
   const hoverIdRef     = useRef<string | null>(null)
   const simHourRef     = useRef(simHour)
+  const extTempRef     = useRef(extTemp    ?? 30)
+  const humidityRef    = useRef(humidity   ?? 0)
+  const windSpeedRef   = useRef(windSpeed  ?? 0)
 
-  useEffect(() => { liveDataRef.current    = liveData        }, [liveData])
-  useEffect(() => { viewModeRef.current    = viewMode        }, [viewMode])
-  useEffect(() => { activeFloorRef.current = activeFloor     }, [activeFloor])
-  useEffect(() => { setFloorRef.current    = setFloor        }, [setFloor])
-  useEffect(() => { selectZoneRef.current  = selectZone      }, [selectZone])
-  useEffect(() => { highlightedRef.current = highlightedZone }, [highlightedZone])
-  useEffect(() => { onHoverRef.current     = onHoverZone     }, [onHoverZone])
-  useEffect(() => { simHourRef.current     = simHour         }, [simHour])
+  useEffect(() => { liveDataRef.current    = liveData              }, [liveData])
+  useEffect(() => { viewModeRef.current    = viewMode              }, [viewMode])
+  useEffect(() => { activeFloorRef.current = activeFloor           }, [activeFloor])
+  useEffect(() => { setFloorRef.current    = setFloor              }, [setFloor])
+  useEffect(() => { selectZoneRef.current  = selectZone            }, [selectZone])
+  useEffect(() => { highlightedRef.current = highlightedZone       }, [highlightedZone])
+  useEffect(() => { onHoverRef.current     = onHoverZone           }, [onHoverZone])
+  useEffect(() => { simHourRef.current     = simHour               }, [simHour])
+  useEffect(() => { extTempRef.current     = extTemp   ?? 30       }, [extTemp])
+  useEffect(() => { humidityRef.current    = humidity  ?? 0        }, [humidity])
+  useEffect(() => { windSpeedRef.current   = windSpeed ?? 0        }, [windSpeed])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -539,6 +569,28 @@ export function useBuildingScene(
     ground.rotation.x = -Math.PI / 2
     ground.position.y = -0.15
     scene.add(ground)
+
+    // ── Atmospheric fog — density driven by humidity ──────────────────────
+    scene.fog = new THREE.FogExp2(0x020c18, 0)    // density updated each frame
+
+    // ── Wind particle stream ───────────────────────────────────────────────
+    // 250 small points that drift in the +X direction; opacity + speed ∝ windSpeed
+    const WIND_COUNT   = 250
+    const _wPos        = new Float32Array(WIND_COUNT * 3)
+    const _wSpeed      = new Float32Array(WIND_COUNT)   // per-particle variance
+    for (let i = 0; i < WIND_COUNT; i++) {
+      _wPos[i*3+0] = (Math.random() - 0.5) * 150   // spread across building + margins
+      _wPos[i*3+1] = Math.random() * 25             // 0–25 m height
+      _wPos[i*3+2] = (Math.random() - 0.5) * 100
+      _wSpeed[i]   = 0.55 + Math.random() * 0.90   // turbulence multiplier
+    }
+    const windGeo = new THREE.BufferGeometry()
+    windGeo.setAttribute('position', new THREE.BufferAttribute(_wPos, 3))
+    const windMat  = new THREE.PointsMaterial({
+      color: 0xd8eeff, size: 0.45, transparent: true, opacity: 0, depthWrite: false, sizeAttenuation: true,
+    })
+    const windPoints = new THREE.Points(windGeo, windMat)
+    scene.add(windPoints)
 
     // ── Sky dome — color driven by real wall-clock time each frame ─────────
     const skyG    = new THREE.SphereGeometry(390, 24, 12)
@@ -682,16 +734,26 @@ export function useBuildingScene(
     }
 
     // ── Persistent colours (reused every frame to avoid GC pressure) ──────
-    const sceneBg = new THREE.Color(0x020c18)
-    scene.background = sceneBg           // THREE.js reads this by reference each frame
+    const sceneBg    = new THREE.Color(0x020c18)
+    scene.background = sceneBg
+    const _coldTint  = new THREE.Color(0x4488ff)   // cold glass tint
+    const _hotTint   = new THREE.Color(0xff5500)   // hot glass tint
+    const _tempTint  = new THREE.Color()           // lerped result — reused
 
     // ── Animation loop ─────────────────────────────────────────────────────
-    let rafId  = 0
-    let pulseT = 0
+    let rafId          = 0
+    let pulseT         = 0
     let prevIncidenceId: string | null = null
+    let lastFrameTime  = performance.now()
+    // Temperature flash state (local, not a React ref — lives with the GL scene)
+    let tempFlash      = 0
+    let prevExtTempGL  = extTempRef.current
 
     function animate(): void {
       rafId = requestAnimationFrame(animate)
+      const nowMs = performance.now()
+      const dt    = Math.min((nowMs - lastFrameTime) / 1000, 0.05)  // seconds, capped
+      lastFrameTime = nowMs
       pulseT += 0.045
 
       const live     = liveDataRef.current
@@ -838,6 +900,44 @@ export function useBuildingScene(
             if (mat) mat.emissive.setRGB(blinkI * 0.65, blinkI * 0.14, 0)
           }
         }
+
+        // ⑨ Humidity → atmospheric fog density (lerps smoothly on value change)
+        const fogTarget  = humidityRef.current * 0.00013  // 0 % = clear, 100 % = thick
+        const fogInst    = scene.fog as THREE.FogExp2
+        fogInst.density += (fogTarget - fogInst.density) * Math.min(1, dt * 2.0)
+        fogInst.color.copy(skyColor)
+
+        // ⑩ Temperature → glass facade tint + flash on value change
+        {
+          const et = extTempRef.current
+          if (Math.abs(et - prevExtTempGL) > 0.4) { tempFlash = 1.0; prevExtTempGL = et }
+          tempFlash = Math.max(0, tempFlash - dt * 0.55)        // decay over ~1.8 s
+
+          const tNorm   = Math.max(0, Math.min(1, (et - 15) / 40))  // 0 at 15°C → 1 at 55°C
+          const flashI  = Math.sin(tempFlash * Math.PI) * 0.55       // bell-curve peak
+          const baseGlow = Math.abs(et - 24) / 80                    // subtle persistent tint
+          _tempTint.lerpColors(_coldTint, _hotTint, tNorm)
+          for (const [, gmat] of glassMats) {
+            gmat.emissive.copy(_tempTint).multiplyScalar(flashI + baseGlow)
+          }
+        }
+      }
+
+      // ⑪ Wind particles — stream in +X direction, speed ∝ windSpeed
+      {
+        const kmh  = windSpeedRef.current
+        const mps  = kmh / 3.6
+        windMat.opacity = Math.min(0.60, kmh * 0.009)
+        if (mps > 0.2) {
+          const wBuf = windGeo.attributes['position'] as THREE.BufferAttribute
+          const wArr = wBuf.array as Float32Array
+          for (let i = 0; i < WIND_COUNT; i++) {
+            wArr[i*3+0] += mps * _wSpeed[i] * dt * 8   // particle drift in +X
+            wArr[i*3+1] += Math.sin(pulseT + i * 0.6) * 0.008  // vertical shimmer
+            if (wArr[i*3+0] > 75) wArr[i*3+0] -= 150            // wrap around
+          }
+          wBuf.needsUpdate = true
+        }
       }
 
       renderer.render(scene, camera)
@@ -884,6 +984,7 @@ export function useBuildingScene(
       skyG.dispose();    skyMat.dispose()
       sunG.dispose();    sunMat.dispose()
       moonG.dispose();   moonMat.dispose()
+      windGeo.dispose(); windMat.dispose()
       renderer.dispose()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps

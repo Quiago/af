@@ -8,12 +8,15 @@ const ZONE_NAMES: Record<ZoneState['id'], string> = {
 }
 
 interface BuildingViewerProps {
-  viewMode:       '3d' | 'plan'
-  liveData:       DigitalTwinState
+  viewMode:        '3d' | 'plan'
+  liveData:        DigitalTwinState
   highlightedZone?: string | null
-  hoveredZone?:   string | null
-  onHoverZone?:   (id: string | null) => void
-  simHour?:       number   // NEW
+  hoveredZone?:    string | null
+  onHoverZone?:    (id: string | null) => void
+  simHour?:        number
+  extTemp?:        number
+  humidity?:       number
+  windSpeed?:      number
 }
 
 export function BuildingViewer({
@@ -23,9 +26,12 @@ export function BuildingViewer({
   hoveredZone     = null,
   onHoverZone     = () => {},
   simHour,
+  extTemp,
+  humidity,
+  windSpeed,
 }: BuildingViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  useBuildingScene(canvasRef, viewMode, liveData, highlightedZone, onHoverZone, simHour)
+  useBuildingScene(canvasRef, viewMode, liveData, highlightedZone, onHoverZone, simHour, extTemp, humidity, windSpeed)
 
   const zone = hoveredZone ? liveData.zones[hoveredZone as ZoneState['id']] : null
 

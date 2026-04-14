@@ -14,6 +14,7 @@ build/
 .ruff_cache/
 
 # BOPTEST simulator — large binary/data files, not for git
+backend/boptest_docker/
 backend/api/v1/simulator/testcases/*/models/wrapped.fmu
 backend/api/v1/simulator/testcases/*/models/Resources/
 backend/api/v1/simulator/testing/references/

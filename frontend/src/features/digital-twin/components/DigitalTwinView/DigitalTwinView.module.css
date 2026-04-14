@@ -133,10 +133,10 @@
   -webkit-backdrop-filter: none;
 }
 
-/* ── Floor bar bottom-center — glass segmented control ───────── */
+/* ── Floor bar — sits above the ActionTimeline strip ─────────── */
 .floorBar {
   position: absolute;
-  bottom: 14px;
+  bottom: 76px;         /* ActionTimeline ≈ 56px + 6px gap + 14px base */
   left: 50%;
   transform: translateX(-50%);
   display: flex;

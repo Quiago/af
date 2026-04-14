@@ -6,17 +6,21 @@
   background: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-body);
+  position: relative;   /* positioning context for absolute sidebar */
 }
 
-/* ── Sidebar — macOS Finder/Settings style ────────────────────── */
+/* ── Sidebar — overlaid so expansion never shifts main content ── */
 .sidebar {
+  position: absolute;   /* overlay: doesn't affect main-area width */
+  top: 0;
+  left: 0;
+  height: 100%;
   width: 70px;
-  background: var(--color-bg);        /* same as page — disappears into background */
+  background: var(--color-bg);
   border-right: 1px solid var(--color-divider);
   display: flex;
   flex-direction: column;
   transition: width var(--duration-slow) var(--ease-soft);
-  flex-shrink: 0;
   overflow: hidden;
   z-index: 20;
 }
@@ -124,6 +128,7 @@
   flex-direction: column;
   min-width: 0;
   overflow: hidden;
+  margin-left: 70px;    /* fixed offset for sidebar icon strip — never changes on hover */
 }
 
 /* ── Topbar — macOS window chrome ─────────────────────────────── */

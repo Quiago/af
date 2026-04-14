@@ -147,17 +147,52 @@ function sunColorFromEl(el: number): THREE.Color {
 }
 
 /**
- * Convert solar elevation + azimuth (radians) to a THREE.js world position.
- * Coordinate convention: x = East, y = Up, z = South (north = -Z).
- * Azimuth is measured from North, clockwise (matching solarPhysics.ts).
+ * Sun/moon DISPLAY position — camera-aligned artistic arc.
+ *
+ * The default camera looks from (65, 40, 68) toward the building's NORTH face
+ * (-Z direction).  Chicago's solar noon is due South (+Z), i.e. directly behind
+ * the camera — physically correct positions are never in frame.
+ *
+ * Instead we arc the sun across the VISIBLE upper sky using the camera's own
+ * screen-space basis projected back into world space:
+ *   screen-right ≈ world (0.722, 0, -0.690)
+ *   screen-up    ≈ world (-0.255, 0.930, -0.267)
+ *   screen-fwd   ≈ world (-0.642, -0.368, -0.672)
+ *
+ * Verified numerically: these positions appear at screen_y ≈ 0.70-0.85,
+ * well inside the visible sky strip above the building.
  */
-function sunWorldPos(el: number, az: number, R: number): THREE.Vector3 {
-  const cosEl = Math.cos(el)
-  return new THREE.Vector3(
-    R * cosEl * Math.sin(az),    // East (+X)
-    R * Math.sin(el),             // Up   (+Y)
-    -R * cosEl * Math.cos(az),   // -North = +South is +Z at az=π; -Z at az=0 (North)
-  )
+
+// Pre-computed camera screen-basis (default orbit position)
+const _CF: [number,number,number] = [-0.642, -0.368, -0.672]  // forward
+const _CU: [number,number,number] = [-0.255,  0.930, -0.267]  // up
+const _CR: [number,number,number] = [ 0.722,  0.000, -0.690]  // right
+
+function sunDisplayPos(hourOfDay: number, R: number): THREE.Vector3 {
+  // t=0 at 6 am, t=1 at 8 pm — sun arcs right→center→left
+  const t  = Math.max(0, Math.min(1, (hourOfDay - 6) / 14))
+  const sx = Math.cos(Math.PI * t)                   // +1 east/right, −1 west/left
+  const sy = 0.35 + Math.sin(Math.PI * t) * 0.05    // 0.35→0.40→0.35 (arc height)
+
+  const dx = _CF[0] + sy * _CU[0] + sx * 0.50 * _CR[0]
+  const dy = _CF[1] + sy * _CU[1] + sx * 0.50 * _CR[1]
+  const dz = _CF[2] + sy * _CU[2] + sx * 0.50 * _CR[2]
+  const len = Math.sqrt(dx*dx + dy*dy + dz*dz)
+  return new THREE.Vector3(dx/len * R, dy/len * R, dz/len * R)
+}
+
+function moonDisplayPos(hourOfDay: number, R: number): THREE.Vector3 {
+  // Moon arcs during night hours (20h–6h).  Simple east→center→west sweep.
+  const h = hourOfDay >= 20 ? hourOfDay - 20 : hourOfDay + 4   // 0 at 20h, 10 at 6h
+  const t  = Math.max(0, Math.min(1, h / 10))
+  const sx = Math.cos(Math.PI * t)
+  const sy = 0.32
+
+  const dx = _CF[0] + sy * _CU[0] + sx * 0.40 * _CR[0]
+  const dy = _CF[1] + sy * _CU[1] + sx * 0.40 * _CR[1]
+  const dz = _CF[2] + sy * _CU[2] + sx * 0.40 * _CR[2]
+  const len = Math.sqrt(dx*dx + dy*dy + dz*dz)
+  return new THREE.Vector3(dx/len * R, dy/len * R, dz/len * R)
 }
 
 // ─── Structural materials — ghost frame, all transparent ─────────────────────
@@ -450,7 +485,7 @@ export function useBuildingScene(
 
     // ── Scene ──────────────────────────────────────────────────────────────
     const scene = new THREE.Scene()
-    scene.background = new THREE.Color(0x0e1a2e)
+    // scene.background is set via sceneBg (persistent Color) before animate()
 
     // ── Camera — lower elevation to expose zone cross-section ──────────────
     const camera = new THREE.PerspectiveCamera(38, 1, 0.5, 600)
@@ -632,6 +667,10 @@ export function useBuildingScene(
       camera.updateProjectionMatrix()
     }
 
+    // ── Persistent colours (reused every frame to avoid GC pressure) ──────
+    const sceneBg = new THREE.Color(0x020c18)
+    scene.background = sceneBg           // THREE.js reads this by reference each frame
+
     // ── Animation loop ─────────────────────────────────────────────────────
     let rafId  = 0
     let pulseT = 0
@@ -708,31 +747,30 @@ export function useBuildingScene(
       {
         const now       = new Date()
         const hourOfDay = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600
-        const { el, az } = solarPosition(hourOfDay)
-        const isDaytime  = el > -0.08   // sun above or just below horizon
-        const isNight    = el < 0.05
+        const { el }    = solarPosition(hourOfDay)   // elevation only — for lighting
+        const isDaytime = el > -0.08
+        const isNight   = el < 0.05
 
-        // Sky dome colour
+        // Sky dome + background colour (mutates sceneBg in-place — no allocation)
         const { sky: skyColor, ground: groundColor } = interpolateSky(hourOfDay)
         skyMat.color.copy(skyColor)
-        scene.background = skyColor.clone()
-        renderer.setClearColor(skyColor, 1)
+        sceneBg.copy(skyColor)
 
         // Ground colour (subtle day/night shift)
         groundMat.color.copy(groundColor)
 
-        // Hemisphere ambient intensity
+        // Hemisphere ambient
         hemiLight.color.copy(skyColor)
         hemiLight.intensity = isDaytime ? 1.0 : 0.25
 
-        // Sun orb
+        // Sun orb — camera-aligned arc so it appears in the visible upper sky
         sunMesh.visible = isDaytime
         if (isDaytime) {
-          const sp = sunWorldPos(el, az, 340)
+          const sp = sunDisplayPos(hourOfDay, 300)
           sunMesh.position.copy(sp)
           sunMat.color.copy(sunColorFromEl(el))
           keyLight.position.copy(sp)
-          keyLight.intensity   = Math.max(0.05, Math.sin(Math.max(0, el)) * 1.8)
+          keyLight.intensity = Math.max(0.05, Math.sin(Math.max(0, el)) * 1.8)
           keyLight.color.copy(sunColorFromEl(el))
           sunGlow.position.copy(sp)
           sunGlow.color.copy(sunColorFromEl(el))
@@ -742,12 +780,10 @@ export function useBuildingScene(
           sunGlow.intensity  = 0
         }
 
-        // Moon orb — opposite side, fixed elevation when sun is down
+        // Moon orb — visible arc during night hours
         moonMesh.visible = isNight
         if (isNight) {
-          const moonAz = az + Math.PI
-          const moonEl = 0.55   // ~31° above horizon — simplified
-          const mp = sunWorldPos(moonEl, moonAz, 340)
+          const mp = moonDisplayPos(hourOfDay, 300)
           moonMesh.position.copy(mp)
           sunGlow.position.copy(mp)
           sunGlow.color.set(0xb8c8d8)

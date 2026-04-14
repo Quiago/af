@@ -1,3 +1,7 @@
+### 2026-04-14 FIX — Sidebar overlay, floor-bar overlap, and sun/moon camera alignment
+- What: Sidebar changed to position:absolute so hover-expand no longer shifts main-area or triggers WebGL resize/blink; floor bar moved to bottom:76px to clear ActionTimeline; sun/moon orbs now use camera-basis arc positions (verified numerically to appear in visible upper sky) instead of physics coords that were behind the camera; scene.background reuses one Color object instead of allocating per frame
+- Why: Sidebar width transition was causing ResizeObserver to resize the WebGL canvas on every hover (flicker); ActionTimeline and floor bar shared identical bottom:14px position (overlap); Chicago noon sun is due South = directly behind the SE-facing camera so physics positions were never in frame
+
 ### 2026-04-14 FEAT — Digital Twin: real-time sun/moon simulation driven by wall-clock time
 - What: Sky dome colour, sun orb, moon orb, directional key light, and hemisphere ambient all update each animation frame from new Date(); sky transitions night→dawn→day→dusk→night; HUD gains a LOCAL time badge with ☀/☾ icon
 - Why: Background brightness and sun position should reflect the real time of day to make the digital twin feel grounded in the physical world

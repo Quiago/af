@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { DashboardPage } from '../dashboard/DashboardPage'
 import { BuildingReportView } from '../building-report/BuildingReportView'
@@ -17,6 +17,85 @@ const VIEW_TITLES: Record<ActiveView, string> = {
   maint:  'Machine Health',
 }
 
+// ─── Facility list (mock — same platform, different building data) ────────────
+
+interface Facility { id: string; name: string; location: string; flag: string }
+
+const FACILITIES: Facility[] = [
+  { id: 'f1', name: '25hours Hotel Dubai',          location: 'One Central, DIFC',         flag: '🇦🇪' },
+  { id: 'f2', name: 'DIFC Gate Avenue Tower A',     location: 'Gate District, Dubai',       flag: '🇦🇪' },
+  { id: 'f3', name: 'Dubai Marina Residence',       location: 'Marina Walk, Complex B',     flag: '🇦🇪' },
+  { id: 'f4', name: 'Jumeirah Beach Hotel',         location: 'Jumeirah Road, Dubai',       flag: '🇦🇪' },
+  { id: 'f5', name: 'Address Downtown',             location: 'Mohammed Bin Rashid Blvd',  flag: '🇦🇪' },
+  { id: 'f6', name: 'Canary Wharf Office Tower',   location: 'London, E14',                flag: '🇬🇧' },
+  { id: 'f7', name: 'Tour First La Défense',        location: 'Paris, Île-de-France',       flag: '🇫🇷' },
+]
+
+// ─── Facility selector component ──────────────────────────────────────────────
+
+interface FacilitySelectorProps {
+  facilities: Facility[]
+  selectedId: string
+  onChange: (id: string) => void
+}
+
+function FacilitySelector({ facilities, selectedId, onChange }: FacilitySelectorProps) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const current = facilities.find((f) => f.id === selectedId) ?? facilities[0]!
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  return (
+    <div className="fac-selector" ref={ref}>
+      <button
+        className={`fac-btn ${open ? 'fac-btn--open' : ''}`}
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+      >
+        <span className="fac-flag">{current.flag}</span>
+        <span className="fac-current-name">{current.name}</span>
+        <svg className="fac-caret" viewBox="0 0 10 6" width="10" height="6" fill="none">
+          <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+        </svg>
+      </button>
+
+      {open && (
+        <div className="fac-dropdown" role="listbox">
+          <div className="fac-dropdown-header">FACILITIES</div>
+          {facilities.map((f) => (
+            <button
+              key={f.id}
+              role="option"
+              aria-selected={f.id === selectedId}
+              className={`fac-item ${f.id === selectedId ? 'fac-item--active' : ''}`}
+              onClick={() => { onChange(f.id); setOpen(false) }}
+            >
+              <span className="fac-item-flag">{f.flag}</span>
+              <span className="fac-item-body">
+                <span className="fac-item-name">{f.name}</span>
+                <span className="fac-item-loc">{f.location}</span>
+              </span>
+              {f.id === selectedId && <span className="fac-item-check">✓</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Sidebar item ─────────────────────────────────────────────────────────────
+
 interface SidebarItemProps {
   icon: string
   label: string
@@ -33,6 +112,8 @@ function SidebarItem({ icon, label, active, onClick }: SidebarItemProps) {
   )
 }
 
+// ─── Shell ────────────────────────────────────────────────────────────────────
+
 export function AppShell() {
   const activeView       = useDashboardStore((s) => s.activeView)
   const setActiveView    = useDashboardStore((s) => s.setActiveView)
@@ -40,7 +121,10 @@ export function AppShell() {
   const setConnStatus    = useDashboardStore((s) => s.setConnectionStatus)
   const connectionStatus = useDashboardStore((s) => s.connectionStatus)
 
-  // ── Initial REST snapshot ──────────────────────────────────────────────────
+  const [facilityId, setFacilityId] = useState('f1')
+  const currentFacility = FACILITIES.find((f) => f.id === facilityId) ?? FACILITIES[0]!
+
+  // ── Initial REST snapshot ────────────────────────────────────────────────────
   useQuery<BuildingSnapshot>({
     queryKey: ['building-snapshot-initial'],
     queryFn: async () => {
@@ -54,7 +138,7 @@ export function AppShell() {
     staleTime: Infinity,
   })
 
-  // ── WebSocket live stream ─────────────────────────────────────────────────
+  // ── WebSocket live stream ────────────────────────────────────────────────────
   useEffect(() => {
     const handleSnapshot = (s: BuildingSnapshot) => setSnapshot(s)
     const cleanupStatus  = wsManager.onStatusChange(setConnStatus)
@@ -72,7 +156,7 @@ export function AppShell() {
   return (
     <div className="app-shell">
 
-      {/* ── Sidebar ─────────────────────────────────────────────────────── */}
+      {/* ── Sidebar ───────────────────────────────────────────────────── */}
       <nav className="sidebar">
         <div className="sb-logo">
           <img src="/light.png" alt="Tripolar" className="sb-logo-img" />
@@ -88,13 +172,15 @@ export function AppShell() {
         </div>
       </nav>
 
-      {/* ── Main ────────────────────────────────────────────────────────── */}
+      {/* ── Main ──────────────────────────────────────────────────────── */}
       <div className="main-area">
 
         {/* Topbar */}
         <header className="topbar">
           <div className="tb-title">
-            <b>{VIEW_TITLES[activeView]}</b> / 25hours Hotel Dubai One Central
+            <b>{VIEW_TITLES[activeView]}</b>
+            <span className="tb-sep">/</span>
+            {currentFacility.name}
           </div>
 
           <div className="tb-right">
@@ -104,6 +190,13 @@ export function AppShell() {
                 {isLive ? 'LIVE' : connectionStatus.toUpperCase()}
               </span>
             </div>
+
+            {/* Facility selector — before user profile */}
+            <FacilitySelector
+              facilities={FACILITIES}
+              selectedId={facilityId}
+              onChange={setFacilityId}
+            />
 
             <div className="tb-user">
               <div className="tb-av">CQ</div>

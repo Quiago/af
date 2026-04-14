@@ -725,8 +725,12 @@ export function useBuildingScene(
       // ④ Sprite labels: position above active floor, hide in plan mode
       for (const [id, entry] of zoneSprites) {
         const g = ZONE_GEOM[id]
-        entry.sprite.position.set(g.cx, curFloor * FH + volH + 1.1, g.cz)
-        entry.sprite.visible = mode === '3d'
+        // In 3D: float above zone; in plan: sit at zone centre height (sprites billboard toward camera)
+        const spriteY = mode === 'plan'
+          ? curFloor * FH + volH * 0.5        // centred in zone for top-down read
+          : curFloor * FH + volH + 1.1        // floating above zone for 3D view
+        entry.sprite.position.set(g.cx, spriteY, g.cz)
+        entry.sprite.visible = true           // visible in both 3D and plan modes
       }
 
       // ⑤ Floor outline tracks selected floor

@@ -1,3 +1,7 @@
+### 2026-04-14 FEAT — Machine Health timeline shows per-asset data in mock mode
+- What: TimelineChart now reads selectedAssetId from store and renders asset-specific series: Chiller (COP/Power kW/LWT), AHU (Fan Power/Supply Air/Fan Speed%), Filter (ΔP Pa/Airflow%), Cooling Tower (Approach K/Fan Speed/Power kW); series rebuild dynamically on asset switch; mock data generator produces distinct profiles per machine type; HistoryPoint extended with all new optional metric fields
+- Why: All machines showing identical chart data made the timeline meaningless in demo mode
+
 ### 2026-04-14 FEAT — Zone labels in floor plan + facility dropdown selector
 - What: Zone temperature sprites now visible in both 3D and top-down plan modes (sprites billboard toward camera so they read correctly from above); added FacilitySelector dropdown in topbar between live pill and user profile — 7 mock facilities (5 Dubai, 1 London, 1 Paris) with flag, name, location; topbar title updates to selected facility name; click-outside closes dropdown
 - Why: Floor plan mode lacked zone temperature context; multi-facility support is a core platform concept that should be demonstrated in the UI

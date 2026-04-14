@@ -45,11 +45,25 @@ export interface BuildingSnapshot {
 }
 
 // Time-series history returned by GET /api/v1/building/history
+// Optional fields depend on the asset type currently selected in the timeline.
 export interface HistoryPoint {
   timestamp: number           // Unix seconds (bucket start)
-  core_temp_c: number | null
-  fan_power_w: number | null
-  core_co2_ppm: number | null
+  // AHU / default
+  core_temp_c?:         number | null
+  fan_power_w?:         number | null
+  core_co2_ppm?:        number | null
+  supply_temp_c?:       number | null
+  fan_speed_pct?:       number | null
+  // Chiller
+  cop?:                 number | null
+  power_kw?:            number | null
+  // Filter
+  diff_pressure_pa?:    number | null
+  airflow_pct?:         number | null
+  // Cooling Tower
+  approach_temp_k?:     number | null
+  ct_power_kw?:         number | null
+  ct_fan_speed_pct?:    number | null
 }
 
 export type Resolution = '1m' | '1h' | '1d' | '1y'

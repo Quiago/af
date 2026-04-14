@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query'
 import { DashboardPage } from '../dashboard/DashboardPage'
 import { BuildingReportView } from '../building-report/BuildingReportView'
 import { PredictiveMaintenanceView } from '../maintenance/PredictiveMaintenanceView'
-import { BmsView } from '../bms/BmsView'
 import { AIChatBubble } from '../../components/organisms/AIChatBubble/AIChatBubble'
 import { useDashboardStore } from '../../store/dashboardStore'
 import { wsManager } from '../../lib/websocket'
@@ -16,7 +15,6 @@ const VIEW_TITLES: Record<ActiveView, string> = {
   dash:   'Digital Twin',
   report: 'Facility Report',
   maint:  'Machine Health',
-  bms:    'BMS',
 }
 
 interface SidebarItemProps {
@@ -87,12 +85,6 @@ export function AppShell() {
           <div className="sb-divider" />
           <div className="sb-sec">OPERATIONS</div>
           <SidebarItem icon="◎" label="Machine Health"  active={activeView === 'maint'} onClick={() => setActiveView('maint')} />
-          <SidebarItem
-            icon="⊞"
-            label="BMS"
-            active={activeView === 'bms'}
-            onClick={() => setActiveView('bms')}
-          />
         </div>
       </nav>
 
@@ -132,9 +124,6 @@ export function AppShell() {
         </div>
         <div className={`view-slot ${activeView === 'maint' ? 'view-slot--active' : ''}`}>
           <PredictiveMaintenanceView />
-        </div>
-        <div className={`view-slot ${activeView === 'bms' ? 'view-slot--active' : ''}`}>
-          <BmsView />
         </div>
 
       </div>

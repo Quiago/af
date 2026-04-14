@@ -1,3 +1,7 @@
+### 2026-04-14 ARCH — Remove BMS tab
+- What: Deleted frontend/src/features/bms/ (11 files); removed BmsView import, sidebar entry, view-slot, and 'bms' from ActiveView union type
+- Why: Feature no longer needed; reduces sidebar clutter
+
 ### 2026-04-14 FIX — Sidebar overlay, floor-bar overlap, and sun/moon camera alignment
 - What: Sidebar changed to position:absolute so hover-expand no longer shifts main-area or triggers WebGL resize/blink; floor bar moved to bottom:76px to clear ActionTimeline; sun/moon orbs now use camera-basis arc positions (verified numerically to appear in visible upper sky) instead of physics coords that were behind the camera; scene.background reuses one Color object instead of allocating per frame
 - Why: Sidebar width transition was causing ResizeObserver to resize the WebGL canvas on every hover (flicker); ActionTimeline and floor bar shared identical bottom:14px position (overlap); Chicago noon sun is due South = directly behind the SE-facing camera so physics positions were never in frame

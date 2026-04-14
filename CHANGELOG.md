@@ -1,3 +1,7 @@
+### 2026-04-14 FEAT — Digital Twin: real-time sun/moon simulation driven by wall-clock time
+- What: Sky dome colour, sun orb, moon orb, directional key light, and hemisphere ambient all update each animation frame from new Date(); sky transitions night→dawn→day→dusk→night; HUD gains a LOCAL time badge with ☀/☾ icon
+- Why: Background brightness and sun position should reflect the real time of day to make the digital twin feel grounded in the physical world
+
 ### 2026-04-12 FIX — BMS snapshot reads from polling loop state instead of get_results()
 - What: Replaced redundant get_results() call in bms_snapshot with app.state.bms_raw_outputs set by the advance() loop in main.py; eliminates the 60-second history-window bug that returned empty data during backfill; fixed sim_time_s to read from raw["time"]
 - Why: get_results() with a 60s window fails during backfill (step=86400s) and adds a redundant BOPTEST round-trip; advance() already returns all outputs

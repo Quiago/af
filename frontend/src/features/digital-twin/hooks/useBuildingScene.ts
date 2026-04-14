@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { useDashboardStore } from '../../../store/dashboardStore'
 import type { DigitalTwinState, ZoneState } from '../types/digitalTwin.types'
+import { solarPosition } from '../lib/solarPhysics'
 
 // ─── DOE multizone_office_simple_air — real building constants ───────────────
 // Chicago, IL office building | Deru et al. 2009
@@ -104,6 +105,59 @@ function makeSpriteEntry(name: string, tempC: number, color: THREE.Color): Sprit
   const sprite  = new THREE.Sprite(mat)
   sprite.scale.set(7.5, 2.5, 1)
   return { sprite, canvas, texture }
+}
+
+// ─── Sky / sun simulation ─────────────────────────────────────────────────────
+
+interface SkyKey { h: number; sky: THREE.Color; ground: THREE.Color }
+
+const SKY_KEYS: SkyKey[] = [
+  { h:  0, sky: new THREE.Color(0x020c18), ground: new THREE.Color(0x04090f) },
+  { h:  4, sky: new THREE.Color(0x020c18), ground: new THREE.Color(0x04090f) },
+  { h:  5, sky: new THREE.Color(0x0e1830), ground: new THREE.Color(0x0a1018) },
+  { h:  6, sky: new THREE.Color(0x1c2c50), ground: new THREE.Color(0x141e30) },
+  { h:  7, sky: new THREE.Color(0x3a6090), ground: new THREE.Color(0x1a2a40) },
+  { h:  8, sky: new THREE.Color(0x4888c8), ground: new THREE.Color(0x1e2e40) },
+  { h: 12, sky: new THREE.Color(0x3878bc), ground: new THREE.Color(0x1c2c3c) },
+  { h: 16, sky: new THREE.Color(0x4888c8), ground: new THREE.Color(0x1e2e40) },
+  { h: 18, sky: new THREE.Color(0x3a6090), ground: new THREE.Color(0x1a2a40) },
+  { h: 19, sky: new THREE.Color(0xb05c28), ground: new THREE.Color(0x281404) },
+  { h: 20, sky: new THREE.Color(0x1a1430), ground: new THREE.Color(0x100814) },
+  { h: 21, sky: new THREE.Color(0x060c1a), ground: new THREE.Color(0x040810) },
+  { h: 24, sky: new THREE.Color(0x020c18), ground: new THREE.Color(0x04090f) },
+]
+
+function interpolateSky(h: number): { sky: THREE.Color; ground: THREE.Color } {
+  const h24 = ((h % 24) + 24) % 24
+  let i = SKY_KEYS.findIndex((k) => k.h > h24)
+  if (i < 0) i = SKY_KEYS.length
+  const a = SKY_KEYS[Math.max(0, i - 1)]!
+  const b = SKY_KEYS[Math.min(SKY_KEYS.length - 1, i)]!
+  const t = b.h === a.h ? 0 : (h24 - a.h) / (b.h - a.h)
+  return {
+    sky:    new THREE.Color().lerpColors(a.sky,    b.sky,    t),
+    ground: new THREE.Color().lerpColors(a.ground, b.ground, t),
+  }
+}
+
+/** Sun color: deep orange at horizon → warm white at high elevation */
+function sunColorFromEl(el: number): THREE.Color {
+  const t = Math.max(0, Math.min(1, el / 0.5))
+  return new THREE.Color().lerpColors(new THREE.Color(0xff7010), new THREE.Color(0xfffae0), t)
+}
+
+/**
+ * Convert solar elevation + azimuth (radians) to a THREE.js world position.
+ * Coordinate convention: x = East, y = Up, z = South (north = -Z).
+ * Azimuth is measured from North, clockwise (matching solarPhysics.ts).
+ */
+function sunWorldPos(el: number, az: number, R: number): THREE.Vector3 {
+  const cosEl = Math.cos(el)
+  return new THREE.Vector3(
+    R * cosEl * Math.sin(az),    // East (+X)
+    R * Math.sin(el),             // Up   (+Y)
+    -R * cosEl * Math.cos(az),   // -North = +South is +Z at az=π; -Z at az=0 (North)
+  )
 }
 
 // ─── Structural materials — ghost frame, all transparent ─────────────────────
@@ -414,7 +468,8 @@ export function useBuildingScene(
     controls.update()
 
     // ── Lighting ───────────────────────────────────────────────────────────
-    scene.add(new THREE.HemisphereLight(0xc8ddf0, 0x6888a0, 1.0))
+    const hemiLight = new THREE.HemisphereLight(0xc8ddf0, 0x6888a0, 1.0)
+    scene.add(hemiLight)
 
     const keyLight = new THREE.DirectionalLight(0xfff5e8, 1.8)
     keyLight.position.set(60, 100, 50)
@@ -436,10 +491,27 @@ export function useBuildingScene(
     ground.position.y = -0.15
     scene.add(ground)
 
-    // ── Sky ────────────────────────────────────────────────────────────────
-    const skyG   = new THREE.SphereGeometry(400, 16, 8)
-    const skyMat = new THREE.MeshBasicMaterial({ color: 0x0a1520, side: THREE.BackSide })
-    scene.add(new THREE.Mesh(skyG, skyMat))
+    // ── Sky dome — color driven by real wall-clock time each frame ─────────
+    const skyG    = new THREE.SphereGeometry(390, 24, 12)
+    const skyMat  = new THREE.MeshBasicMaterial({ color: 0x020c18, side: THREE.BackSide })
+    const skyMesh = new THREE.Mesh(skyG, skyMat)
+    scene.add(skyMesh)
+
+    // ── Sun disc ──────────────────────────────────────────────────────────
+    const sunG    = new THREE.SphereGeometry(6, 16, 8)
+    const sunMat  = new THREE.MeshBasicMaterial({ color: 0xfffae0 })
+    const sunMesh = new THREE.Mesh(sunG, sunMat)
+    scene.add(sunMesh)
+
+    // ── Moon disc ─────────────────────────────────────────────────────────
+    const moonG    = new THREE.SphereGeometry(4, 12, 6)
+    const moonMat  = new THREE.MeshBasicMaterial({ color: 0xd4dce8 })
+    const moonMesh = new THREE.Mesh(moonG, moonMat)
+    scene.add(moonMesh)
+
+    // ── Sun glow point light (warm during day, cool silver at night) ───────
+    const sunGlow = new THREE.PointLight(0xfff0cc, 0, 600)
+    scene.add(sunGlow)
 
     // ── Building ───────────────────────────────────────────────────────────
     const mats = makeMaterials()
@@ -632,6 +704,57 @@ export function useBuildingScene(
         controls.update()
       }
 
+      // ⑦ Solar / sky simulation — real wall-clock time ──────────────────
+      {
+        const now       = new Date()
+        const hourOfDay = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600
+        const { el, az } = solarPosition(hourOfDay)
+        const isDaytime  = el > -0.08   // sun above or just below horizon
+        const isNight    = el < 0.05
+
+        // Sky dome colour
+        const { sky: skyColor, ground: groundColor } = interpolateSky(hourOfDay)
+        skyMat.color.copy(skyColor)
+        scene.background = skyColor.clone()
+        renderer.setClearColor(skyColor, 1)
+
+        // Ground colour (subtle day/night shift)
+        groundMat.color.copy(groundColor)
+
+        // Hemisphere ambient intensity
+        hemiLight.color.copy(skyColor)
+        hemiLight.intensity = isDaytime ? 1.0 : 0.25
+
+        // Sun orb
+        sunMesh.visible = isDaytime
+        if (isDaytime) {
+          const sp = sunWorldPos(el, az, 340)
+          sunMesh.position.copy(sp)
+          sunMat.color.copy(sunColorFromEl(el))
+          keyLight.position.copy(sp)
+          keyLight.intensity   = Math.max(0.05, Math.sin(Math.max(0, el)) * 1.8)
+          keyLight.color.copy(sunColorFromEl(el))
+          sunGlow.position.copy(sp)
+          sunGlow.color.copy(sunColorFromEl(el))
+          sunGlow.intensity = Math.max(0, Math.sin(Math.max(0, el))) * 0.6
+        } else {
+          keyLight.intensity = 0.05
+          sunGlow.intensity  = 0
+        }
+
+        // Moon orb — opposite side, fixed elevation when sun is down
+        moonMesh.visible = isNight
+        if (isNight) {
+          const moonAz = az + Math.PI
+          const moonEl = 0.55   // ~31° above horizon — simplified
+          const mp = sunWorldPos(moonEl, moonAz, 340)
+          moonMesh.position.copy(mp)
+          sunGlow.position.copy(mp)
+          sunGlow.color.set(0xb8c8d8)
+          sunGlow.intensity = 0.12
+        }
+      }
+
       renderer.render(scene, camera)
     }
 
@@ -674,6 +797,8 @@ export function useBuildingScene(
       // Scene-level geometry
       groundG.dispose(); groundMat.dispose()
       skyG.dispose();    skyMat.dispose()
+      sunG.dispose();    sunMat.dispose()
+      moonG.dispose();   moonMat.dispose()
       renderer.dispose()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { BuildingViewer } from '../BuildingViewer/BuildingViewer'
 import { FloorPlanViewer } from '../FloorPlanViewer/FloorPlanViewer'
 import { ActionTimeline } from '../ActionTimeline/ActionTimeline'
@@ -21,6 +21,20 @@ const FLOORS = [
 export function DigitalTwinView() {
   const [viewMode,    setViewMode]    = useState<'3d' | 'plan'>('3d')
   const [hoveredZone, setHoveredZone] = useState<string | null>(null)
+  const [clockLabel,  setClockLabel]  = useState<string>('')
+
+  useEffect(() => {
+    function tick() {
+      const now  = new Date()
+      const h    = now.getHours()
+      const m    = now.getMinutes().toString().padStart(2, '0')
+      const icon = h >= 6 && h < 20 ? '☀' : '☾'
+      setClockLabel(`${icon} ${h}:${m}`)
+    }
+    tick()
+    const id = setInterval(tick, 30_000)
+    return () => clearInterval(id)
+  }, [])
 
   const { liveData } = useDigitalTwinData()
   const simulationProjection = useDashboardStore((s) => s.simulationProjection)
@@ -109,6 +123,12 @@ export function DigitalTwinView() {
               </span>
               {liveData.isLiveData && (
                 <span className={`${styles.hudBadge} ${styles.hudLive}`}>LIVE</span>
+              )}
+              {clockLabel && (
+                <span className={styles.hudBadge}>
+                  <span className={styles.hudKey}>LOCAL</span>
+                  {clockLabel}
+                </span>
               )}
             </>
           )}

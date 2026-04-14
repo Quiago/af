@@ -136,7 +136,7 @@
 /* ── Floor bar — sits above the ActionTimeline strip ─────────── */
 .floorBar {
   position: absolute;
-  bottom: 76px;         /* ActionTimeline ≈ 56px + 6px gap + 14px base */
+  bottom: 130px;         /* ActionTimeline ≈ 56px + 6px gap + 14px base */
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -194,4 +194,220 @@
   border-color: rgba(184, 92, 115, 0.35);
   background: rgba(184, 92, 115, 0.12);
   font-weight: 700;
+}
+
+/* ── Bottom control bar ────────────────────────────────── */
+.controlBar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  background: var(--color-glass-bg);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border-top: 0.5px solid var(--color-glass-stroke);
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0 20px;
+  z-index: 10;
+}
+
+.ctrlSep {
+  width: 1px;
+  height: 28px;
+  background: var(--color-glass-stroke);
+  margin: 0 16px;
+  flex-shrink: 0;
+}
+
+/* ── Time section ──────────────────────────────────────── */
+.timeSection {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.timeDisplay {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-text);
+  font-weight: 600;
+  width: 66px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.timeRangeLabel {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--color-text-faint);
+  letter-spacing: var(--tracking-wide);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Slider — custom track + thumb */
+.timeSlider {
+  flex: 1;
+  min-width: 80px;
+  height: 20px;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  cursor: pointer;
+  outline: none;
+}
+
+.timeSlider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    var(--color-primary) 0%,
+    var(--color-primary) var(--slider-pct, 50%),
+    var(--color-primary-soft) var(--slider-pct, 50%),
+    var(--color-primary-soft) 100%
+  );
+  border: 0.5px solid var(--color-primary-border);
+}
+
+.timeSlider::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-primary-soft);
+  border: 0.5px solid var(--color-primary-border);
+}
+
+.timeSlider::-moz-range-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-primary);
+}
+
+.timeSlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  background: var(--color-primary);
+  border-radius: 50%;
+  margin-top: -6px;
+  box-shadow: 0 0 0 3px rgba(0, 165, 100, 0.20), 0 1px 4px rgba(0,0,0,0.4);
+  cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-standard);
+}
+
+.timeSlider::-webkit-slider-thumb:hover { transform: scale(1.25); }
+
+.timeSlider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: var(--color-primary);
+  border-radius: 50%;
+  border: none;
+  box-shadow: 0 0 0 3px rgba(0, 165, 100, 0.20);
+  cursor: pointer;
+}
+
+.nowBtn {
+  padding: 4px 10px;
+  background: var(--color-primary-soft);
+  border: 0.5px solid var(--color-primary-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-primary);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: var(--tracking-wide);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background var(--duration-fast) var(--ease-standard),
+              color var(--duration-fast) var(--ease-standard);
+}
+
+.nowBtn:hover {
+  background: var(--color-primary-border);
+  color: var(--color-text);
+}
+
+.nowBtnActive {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+/* ── Weather spinners ──────────────────────────────────── */
+.weatherSection {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.spinnerLabel {
+  font-family: var(--font-mono);
+  font-size: 7px;
+  color: var(--color-text-faint);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.spinnerBody {
+  display: flex;
+  align-items: center;
+  background: var(--color-primary-soft);
+  border: 0.5px solid var(--color-primary-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.spinnerBtn {
+  width: 18px;
+  height: 26px;
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 7px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--duration-fast);
+  flex-shrink: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  padding: 0;
+}
+
+.spinnerBtn:hover {
+  background: var(--color-primary-border);
+  color: var(--color-text);
+}
+
+.spinnerBtn:active {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.spinnerVal {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text);
+  min-width: 44px;
+  text-align: center;
+  white-space: nowrap;
+  padding: 0 2px;
 }

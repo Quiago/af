@@ -1,3 +1,7 @@
+### 2026-04-14 FEAT — Time-of-day slider, solar zone incidence blinking, weather spinners
+- What: Bottom control bar on Digital Twin canvas with 0–24h time slider + NOW button; sun-facing zone (East/South/West) pulses orange/red based on simulated hour; right side EXT TEMP/HUMIDITY/WIND hold-to-repeat numeric spinners; ActionTimeline and floorBar positions adjusted upward to clear new bar
+- Why: Enables time-scrubbing for solar load simulation and manual weather parameter overrides for what-if analysis
+
 ### 2026-04-14 FEAT — Machine Health timeline shows per-asset data in mock mode
 - What: TimelineChart now reads selectedAssetId from store and renders asset-specific series: Chiller (COP/Power kW/LWT), AHU (Fan Power/Supply Air/Fan Speed%), Filter (ΔP Pa/Airflow%), Cooling Tower (Approach K/Fan Speed/Power kW); series rebuild dynamically on asset switch; mock data generator produces distinct profiles per machine type; HistoryPoint extended with all new optional metric fields
 - Why: All machines showing identical chart data made the timeline meaningless in demo mode

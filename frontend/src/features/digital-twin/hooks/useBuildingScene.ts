@@ -443,6 +443,16 @@ function makeFloorOutline(): THREE.LineSegments {
   return new THREE.LineSegments(geo, mat)
 }
 
+// ─── Solar zone incidence ─────────────────────────────────────────────────────
+
+function solarIncidenceZone(hour: number): ZoneState['id'] | null {
+  const h = ((hour % 24) + 24) % 24
+  if (h >= 5.5  && h < 10.5) return 'eas'
+  if (h >= 10.5 && h < 14.5) return 'sou'
+  if (h >= 14.5 && h < 18.5) return 'wes'
+  return null
+}
+
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useBuildingScene(
@@ -451,6 +461,7 @@ export function useBuildingScene(
   liveData:        DigitalTwinState,
   highlightedZone: string | null,
   onHoverZone:     (id: string | null) => void,
+  simHour?:        number,
 ): void {
   const activeFloor = useDashboardStore((s) => s.selectedFloor)
   const setFloor    = useDashboardStore((s) => s.setSelectedFloor)
@@ -464,6 +475,7 @@ export function useBuildingScene(
   const highlightedRef = useRef(highlightedZone)
   const onHoverRef     = useRef(onHoverZone)
   const hoverIdRef     = useRef<string | null>(null)
+  const simHourRef     = useRef(simHour)
 
   useEffect(() => { liveDataRef.current    = liveData        }, [liveData])
   useEffect(() => { viewModeRef.current    = viewMode        }, [viewMode])
@@ -472,6 +484,7 @@ export function useBuildingScene(
   useEffect(() => { selectZoneRef.current  = selectZone      }, [selectZone])
   useEffect(() => { highlightedRef.current = highlightedZone }, [highlightedZone])
   useEffect(() => { onHoverRef.current     = onHoverZone     }, [onHoverZone])
+  useEffect(() => { simHourRef.current     = simHour         }, [simHour])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -675,6 +688,7 @@ export function useBuildingScene(
     // ── Animation loop ─────────────────────────────────────────────────────
     let rafId  = 0
     let pulseT = 0
+    let prevIncidenceId: string | null = null
 
     function animate(): void {
       rafId = requestAnimationFrame(animate)
@@ -757,7 +771,8 @@ export function useBuildingScene(
       // ⑦ Solar / sky simulation — real wall-clock time ──────────────────
       {
         const now       = new Date()
-        const hourOfDay = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600
+        const realHour  = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600
+        const hourOfDay = simHourRef.current !== undefined ? simHourRef.current : realHour
         const { el }    = solarPosition(hourOfDay)   // elevation only — for lighting
         const isDaytime = el > -0.08
         const isNight   = el < 0.05
@@ -799,6 +814,29 @@ export function useBuildingScene(
           sunGlow.position.copy(mp)
           sunGlow.color.set(0xb8c8d8)
           sunGlow.intensity = 0.12
+        }
+
+        // ⑧ Solar zone incidence — orange pulse on sun-facing facade
+        const incidenceId = isDaytime ? solarIncidenceZone(hourOfDay) : null
+        if (incidenceId !== prevIncidenceId) {
+          if (prevIncidenceId) {
+            const prevZone = liveDataRef.current.zones[prevIncidenceId as ZoneState['id']]
+            if (prevZone) {
+              const tc = tempToColor(prevZone.temperature)
+              for (let f = 0; f < NF; f++) {
+                const mat = zoneMeshMats.get(`${prevIncidenceId}_${f}`)
+                if (mat) mat.emissive.copy(tc).multiplyScalar(0.14)
+              }
+            }
+          }
+          prevIncidenceId = incidenceId
+        }
+        if (incidenceId) {
+          const blinkI = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(pulseT * 0.8))
+          for (let f = 0; f < NF; f++) {
+            const mat = zoneMeshMats.get(`${incidenceId}_${f}`)
+            if (mat) mat.emissive.setRGB(blinkI * 0.65, blinkI * 0.14, 0)
+          }
         }
       }
 

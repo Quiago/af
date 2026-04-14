@@ -13,6 +13,7 @@ interface BuildingViewerProps {
   highlightedZone?: string | null
   hoveredZone?:   string | null
   onHoverZone?:   (id: string | null) => void
+  simHour?:       number   // NEW
 }
 
 export function BuildingViewer({
@@ -21,9 +22,10 @@ export function BuildingViewer({
   highlightedZone = null,
   hoveredZone     = null,
   onHoverZone     = () => {},
+  simHour,
 }: BuildingViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  useBuildingScene(canvasRef, viewMode, liveData, highlightedZone, onHoverZone)
+  useBuildingScene(canvasRef, viewMode, liveData, highlightedZone, onHoverZone, simHour)
 
   const zone = hoveredZone ? liveData.zones[hoveredZone as ZoneState['id']] : null
 

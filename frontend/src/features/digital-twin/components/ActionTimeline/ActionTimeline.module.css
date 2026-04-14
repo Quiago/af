@@ -3,7 +3,7 @@
   align-items: center;
   justify-content: center;
   position: absolute;
-  bottom: 14px;
+  bottom: 64px;
   left: 50%;
   transform: translateX(-50%);
   background: var(--color-glass-bg);

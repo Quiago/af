@@ -112,19 +112,19 @@ function makeSpriteEntry(name: string, tempC: number, color: THREE.Color): Sprit
 interface SkyKey { h: number; sky: THREE.Color; ground: THREE.Color }
 
 const SKY_KEYS: SkyKey[] = [
-  { h:  0, sky: new THREE.Color(0x020c18), ground: new THREE.Color(0x04090f) },
-  { h:  4, sky: new THREE.Color(0x020c18), ground: new THREE.Color(0x04090f) },
-  { h:  5, sky: new THREE.Color(0x0e1830), ground: new THREE.Color(0x0a1018) },
-  { h:  6, sky: new THREE.Color(0x1c2c50), ground: new THREE.Color(0x141e30) },
-  { h:  7, sky: new THREE.Color(0x3a6090), ground: new THREE.Color(0x1a2a40) },
-  { h:  8, sky: new THREE.Color(0x4888c8), ground: new THREE.Color(0x1e2e40) },
-  { h: 12, sky: new THREE.Color(0x3878bc), ground: new THREE.Color(0x1c2c3c) },
-  { h: 16, sky: new THREE.Color(0x4888c8), ground: new THREE.Color(0x1e2e40) },
-  { h: 18, sky: new THREE.Color(0x3a6090), ground: new THREE.Color(0x1a2a40) },
-  { h: 19, sky: new THREE.Color(0xb05c28), ground: new THREE.Color(0x281404) },
-  { h: 20, sky: new THREE.Color(0x1a1430), ground: new THREE.Color(0x100814) },
-  { h: 21, sky: new THREE.Color(0x060c1a), ground: new THREE.Color(0x040810) },
-  { h: 24, sky: new THREE.Color(0x020c18), ground: new THREE.Color(0x04090f) },
+  { h:  0, sky: new THREE.Color(0x020c18), ground: new THREE.Color(0x0d1a0a) },  // midnight
+  { h:  4, sky: new THREE.Color(0x020c18), ground: new THREE.Color(0x0d1a0a) },  // deep night
+  { h:  5, sky: new THREE.Color(0x0e1830), ground: new THREE.Color(0x111e0d) },  // pre-dawn
+  { h:  6, sky: new THREE.Color(0x1c2c50), ground: new THREE.Color(0x182810) },  // dawn
+  { h:  7, sky: new THREE.Color(0x3a6090), ground: new THREE.Color(0x243c14) },  // sunrise
+  { h:  8, sky: new THREE.Color(0x4888c8), ground: new THREE.Color(0x2d4a1e) },  // morning
+  { h: 12, sky: new THREE.Color(0x3878bc), ground: new THREE.Color(0x2d4a1e) },  // midday
+  { h: 16, sky: new THREE.Color(0x4888c8), ground: new THREE.Color(0x2d4a1e) },  // afternoon
+  { h: 18, sky: new THREE.Color(0x3a6090), ground: new THREE.Color(0x243c14) },  // pre-sunset
+  { h: 19, sky: new THREE.Color(0xb05c28), ground: new THREE.Color(0x1a2c0e) },  // sunset
+  { h: 20, sky: new THREE.Color(0x1a1430), ground: new THREE.Color(0x111a0d) },  // dusk
+  { h: 21, sky: new THREE.Color(0x060c1a), ground: new THREE.Color(0x0d1a0a) },  // night
+  { h: 24, sky: new THREE.Color(0x020c18), ground: new THREE.Color(0x0d1a0a) },  // midnight
 ]
 
 function interpolateSky(h: number): { sky: THREE.Color; ground: THREE.Color } {
@@ -172,7 +172,8 @@ function sunDisplayPos(hourOfDay: number, R: number): THREE.Vector3 {
   // t=0 at 6 am, t=1 at 8 pm — sun arcs right→center→left
   const t  = Math.max(0, Math.min(1, (hourOfDay - 6) / 14))
   const sx = Math.cos(Math.PI * t)                   // +1 east/right, −1 west/left
-  const sy = 0.35 + Math.sin(Math.PI * t) * 0.05    // 0.35→0.40→0.35 (arc height)
+  // sy ≥ 0.42 guarantees dy > 0 (world y > 0, i.e. above the ground plane)
+  const sy = 0.42 + Math.sin(Math.PI * t) * 0.06    // 0.42→0.48→0.42 (arc height)
 
   const dx = _CF[0] + sy * _CU[0] + sx * 0.50 * _CR[0]
   const dy = _CF[1] + sy * _CU[1] + sx * 0.50 * _CR[1]
@@ -186,7 +187,7 @@ function moonDisplayPos(hourOfDay: number, R: number): THREE.Vector3 {
   const h = hourOfDay >= 20 ? hourOfDay - 20 : hourOfDay + 4   // 0 at 20h, 10 at 6h
   const t  = Math.max(0, Math.min(1, h / 10))
   const sx = Math.cos(Math.PI * t)
-  const sy = 0.32
+  const sy = 0.44  // ≥ 0.42 → guaranteed above the ground plane
 
   const dx = _CF[0] + sy * _CU[0] + sx * 0.40 * _CR[0]
   const dy = _CF[1] + sy * _CU[1] + sx * 0.40 * _CR[1]
@@ -520,7 +521,7 @@ export function useBuildingScene(
 
     // ── Ground ─────────────────────────────────────────────────────────────
     const groundG   = new THREE.PlaneGeometry(300, 300)
-    const groundMat = new THREE.MeshPhongMaterial({ color: 0x141e2e, shininess: 2 })
+    const groundMat = new THREE.MeshPhongMaterial({ color: 0x1a2c10, shininess: 2 })
     const ground    = new THREE.Mesh(groundG, groundMat)
     ground.rotation.x = -Math.PI / 2
     ground.position.y = -0.15
@@ -733,11 +734,17 @@ export function useBuildingScene(
 
       // ⑥ View mode
       if (mode === 'plan') {
-        camera.position.set(controls.target.x, curFloor * FH + 65, controls.target.z)
-        camera.lookAt(controls.target.x, curFloor * FH, controls.target.z)
-        building.visible     = false
-        floorOutline.visible = false
+        // Top-down orthographic-style view: camera straight above active floor
+        // camera.up = North (−Z) so North zone appears at the top of the screen
+        controls.enabled = false
+        camera.up.set(0, 0, -1)
+        camera.position.set(0, curFloor * FH + 58, 0)
+        camera.lookAt(0, curFloor * FH, 0)
+        building.visible     = true
+        floorOutline.visible = true
       } else {
+        controls.enabled     = true
+        camera.up.set(0, 1, 0)
         building.visible     = true
         floorOutline.visible = true
         controls.update()

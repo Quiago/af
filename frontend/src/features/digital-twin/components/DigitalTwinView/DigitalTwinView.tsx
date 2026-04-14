@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { BuildingViewer } from '../BuildingViewer/BuildingViewer'
-import { FloorPlanViewer } from '../FloorPlanViewer/FloorPlanViewer'
 import { ActionTimeline } from '../ActionTimeline/ActionTimeline'
 import { useDigitalTwinData } from '../../hooks/useDigitalTwinData'
 import { useDashboardStore } from '../../../../store/dashboardStore'
@@ -56,8 +55,8 @@ export function DigitalTwinView() {
       {/* ── Canvas area ───────────────────────────────────────────── */}
       <div className={styles.canvasWrapper}>
 
-        {/* 3D exterior view */}
-        <div className={`${styles.viewLayer} ${viewMode === '3d' ? styles.visible : ''}`}>
+        {/* Building viewer — handles both 3D and top-down plan modes */}
+        <div className={`${styles.viewLayer} ${styles.visible}`}>
           <BuildingViewer
             viewMode={viewMode}
             liveData={liveData}
@@ -65,11 +64,6 @@ export function DigitalTwinView() {
             hoveredZone={hoveredZone}
             onHoverZone={setHoveredZone}
           />
-        </div>
-
-        {/* Floor plan view */}
-        <div className={`${styles.viewLayer} ${viewMode === 'plan' ? styles.visible : ''}`}>
-          <FloorPlanViewer active={viewMode === 'plan'} />
         </div>
 
         {/* HUD top-left — climate data normally; delta impact when simulating */}

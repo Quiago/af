@@ -1,3 +1,7 @@
+### 2026-04-14 FIX — Floor plan = top-down 3D view; green ground; sun/moon above ground
+- What: Floor plan button now snaps the same 3D canvas to a top-down camera (North at top, OrbitControls disabled) instead of rendering FloorPlanViewer; ground plane changed to green (0x2d4a1e day → 0x0d1a0a night) via SKY_KEYS; sun sy raised to 0.42–0.48 and moon sy to 0.44 so world-y is always positive (above ground plane); FloorPlanViewer no longer mounted
+- Why: User saw the separate SVG floor plan as redundant; moon was rendering underground because camera-basis forward vector has negative y, requiring sy > 0.396 to guarantee positive world position
+
 ### 2026-04-14 ARCH — Remove BMS tab
 - What: Deleted frontend/src/features/bms/ (11 files); removed BmsView import, sidebar entry, view-slot, and 'bms' from ActiveView union type
 - Why: Feature no longer needed; reduces sidebar clutter

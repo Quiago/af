@@ -391,6 +391,50 @@ function buildBuilding(mats: ReturnType<typeof makeMaterials>): BuildingObjects 
   return { group, zoneMeshes, zoneMeshMats, glassMats, slabMeshes, floorSlabMats }
 }
 
+// ─── Dynamic zone thermal model ───────────────────────────────────────────────
+// Computes per-zone temperatures as a function of exterior conditions.
+//   extTemp     — exterior air temperature (°C), from UI spinner
+//   simHour     — time of day 0–24
+//   incidenceZone — which facade is receiving direct solar gain right now
+//
+// The model mixes exterior temperature with the HVAC setpoint using a zone-
+// specific factor, then adds time-of-day thermal lag and direct solar gain.
+//
+// Mixing ratios (higher = more coupled to exterior):
+//   North / South facades ≈ 40 % exterior (large glazing)
+//   East  / West  facades ≈ 44 % exterior (smaller but unshaded)
+//   Core                  ≈ 18 % exterior (insulated, equipment-dominated)
+
+const ZONE_MIXING: Record<ZoneState['id'], number> = {
+  nor: 0.42,
+  sou: 0.40,
+  eas: 0.44,
+  wes: 0.44,
+  cor: 0.18,
+}
+const HVAC_SETPOINT = 22.5  // °C — representative HVAC target for offices
+
+function computeZoneTemps(
+  extTemp: number,
+  simHour: number,
+  incidenceZone: ZoneState['id'] | null,
+): Record<ZoneState['id'], number> {
+  const h = ((simHour % 24) + 24) % 24
+  // Solar arc fraction: 0 at 6 am, peaks at 1 pm, 0 at 8 pm
+  const solarFrac = (h >= 6 && h <= 20) ? Math.sin(Math.PI * (h - 6) / 14) : 0
+  const result = {} as Record<ZoneState['id'], number>
+  for (const id of ZONE_IDS) {
+    const mix  = ZONE_MIXING[id]!
+    // Base: weighted mix of exterior + HVAC setpoint; time-of-day raises
+    // perimeter zones slightly as solar and internal heat accumulate
+    const base  = mix * extTemp + (1 - mix) * HVAC_SETPOINT + solarFrac * mix * 1.8
+    // Direct solar gain: +4 °C at peak solar noon on the sun-facing facade
+    const solar = id === incidenceZone ? solarFrac * 4.2 : 0
+    result[id]  = base + solar
+  }
+  return result
+}
+
 // ─── Update zone + glass colors from live temperature ────────────────────────
 
 const BASE_ZONE = new THREE.Color(0x80b8e0)
@@ -406,7 +450,7 @@ function updateZoneMats(
     const zone = zones[id]
     if (!zone) continue
     const prev = prevTemps.get(id)
-    if (prev !== undefined && Math.abs(zone.temperature - prev) < 0.05) continue
+    if (prev !== undefined && Math.abs(zone.temperature - prev) < 0.01) continue
     prevTemps.set(id, zone.temperature)
 
     const tc = tempToColor(zone.temperature)
@@ -762,8 +806,22 @@ export function useBuildingScene(
       const hlZone   = highlightedRef.current
       const hvZone   = hoverIdRef.current
 
-      // ① Update zone/glass/label colors from live temperature
-      updateZoneMats(zoneMeshMats, glassMats, live.zones, prevTemps, zoneSprites)
+      // ── Shared sim-time / solar state (used by zones, sky, incidence, weather)
+      const _now2     = new Date()
+      const realHour  = _now2.getHours() + _now2.getMinutes() / 60 + _now2.getSeconds() / 3600
+      const hourOfDay = simHourRef.current !== undefined ? simHourRef.current : realHour
+      const { el }    = solarPosition(hourOfDay)
+      const isDaytime = el > -0.08
+      const isNight   = el < 0.05
+      const incidenceId = isDaytime ? solarIncidenceZone(hourOfDay) : null
+
+      // ① Dynamic zone temperatures — driven by ext temp, time of day, and solar incidence
+      const dynTemps = computeZoneTemps(extTempRef.current, hourOfDay, incidenceId)
+      const dynZones = { ...live.zones }
+      for (const id of ZONE_IDS) {
+        if (dynZones[id]) dynZones[id] = { ...dynZones[id]!, temperature: dynTemps[id]! }
+      }
+      updateZoneMats(zoneMeshMats, glassMats, dynZones, prevTemps, zoneSprites)
 
       // ② Per-mesh opacity: active floor fully lit, other floors nearly invisible
       for (const [id, meshList] of zoneMeshes) {
@@ -830,15 +888,8 @@ export function useBuildingScene(
         controls.update()
       }
 
-      // ⑦ Solar / sky simulation — real wall-clock time ──────────────────
+      // ⑦ Solar / sky simulation (hourOfDay / isDaytime / isNight computed above)
       {
-        const now       = new Date()
-        const realHour  = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600
-        const hourOfDay = simHourRef.current !== undefined ? simHourRef.current : realHour
-        const { el }    = solarPosition(hourOfDay)   // elevation only — for lighting
-        const isDaytime = el > -0.08
-        const isNight   = el < 0.05
-
         // Sky dome + background colour (mutates sceneBg in-place — no allocation)
         const { sky: skyColor, ground: groundColor } = interpolateSky(hourOfDay)
         skyMat.color.copy(skyColor)
@@ -879,7 +930,6 @@ export function useBuildingScene(
         }
 
         // ⑧ Solar zone incidence — orange pulse on sun-facing facade
-        const incidenceId = isDaytime ? solarIncidenceZone(hourOfDay) : null
         if (incidenceId !== prevIncidenceId) {
           if (prevIncidenceId) {
             const prevZone = liveDataRef.current.zones[prevIncidenceId as ZoneState['id']]

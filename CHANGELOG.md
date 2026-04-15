@@ -1,3 +1,11 @@
+### 2026-04-15 FEAT — Dynamic zone temperature model in Digital Twin
+- What: Zone temperatures now computed from extTemp + simHour + solar incidence using per-zone thermal mixing ratios (HVAC_SETPOINT 22.5°C; exterior mixing: Core 18%, perimeter ~42%); sun-facing zone gets up to +4.2°C solar gain at solar noon; sprite labels and zone colors update live as user moves sliders; hourOfDay/incidenceId hoisted to top of animate loop so labels always match solar state
+- Why: Zone labels were static/hardcoded and did not reflect the UI weather or time-of-day controls
+
+### 2026-04-15 FIX — Model selector + clip attachment moved to input bar (Notion/Perplexity style)
+- What: Model selector pill and paperclip attachment button moved from header into the chat input toolbar below the textarea; model dropdown now opens upward; file attachment reads text files up to 120 KB and injects as context prefix in the API call; header simplified to title + new-chat + close
+- Why: User feedback — model selector belongs in the input area, not the header
+
 ### 2026-04-15 FEAT — AIChatBubble with OpenAI streaming + Perplexity-style UI
 - What: Replaced static mock chatbot with GPT-4o-mini streaming via openai SDK; fake model selector UI shows NVIDIA Nemotron-70B (default), Qwen3-235B, Mistral Large 2 — all backed by GPT-4o-mini with persona system prompts; Perplexity-style 420×560px chat window with empty state + quick prompts, streaming bubble cursor, auto-expand textarea, model dropdown; VITE_OPENAI_API_KEY env var; Zustand chatStore for messages/model/loading
 - Why: Demo requires believable AI assistant that never reveals the underlying model, with a polished UI matching the design aesthetic

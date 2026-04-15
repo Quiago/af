@@ -18,6 +18,7 @@ backend/boptest_docker/
 backend/api/v1/simulator/testcases/*/models/wrapped.fmu
 backend/api/v1/simulator/testcases/*/models/Resources/
 backend/api/v1/simulator/testing/references/
+sim-stack
 
 # Node / frontend
 frontend/node_modules/

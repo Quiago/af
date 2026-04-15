@@ -54,6 +54,7 @@ async def get_latest(request: Request) -> BuildingSnapshot | None:
 
 @router.get("/history", response_model=list[HistoryPoint])
 async def get_history_endpoint(
+    request: Request,
     resolution: Resolution = Query(Resolution.one_hour, description="Bucket size"),
     start_time: datetime | None = Query(None, description="ISO 8601 start (default: last week)"),
     end_time:   datetime | None = Query(None, description="ISO 8601 end   (default: now)"),
@@ -62,6 +63,13 @@ async def get_history_endpoint(
 
     AVG is used for temperature / CO2; MAX is used for fan power (peak demand).
     """
+    logger.warning(
+    "HISTORY ip=%s ua=%s origin=%s referer=%s",
+    request.client.host if request.client else None,
+    request.headers.get("user-agent"),
+    request.headers.get("origin"),
+    request.headers.get("referer"),
+    )
     now = datetime.now(timezone.utc)
     return await get_history(
         resolution.value,

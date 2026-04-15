@@ -28,6 +28,7 @@ from api.v1.boptest.service import (
 from api.v1.building.service import build_snapshot
 from core.config import settings, logger
 
+from dotenv import set_key
 
 # ─── Historian loop ────────────────────────────────────────────────────────────
 
@@ -67,6 +68,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         testid = await setup_boptest()
         logger.info("After testid from checkpoint")
         app.state.testid = testid
+        set_key(".env", "BOPTEST_TEST_ID", testid)
+
         logger.info("BOPTEST ready. testid=%s", testid)
     except BOPTESTError as exc:
         logger.warning(
@@ -98,12 +101,9 @@ app.add_middleware(
 app.include_router(router)
 
 
-@app.get("/health")
+@app.get("/")
 async def health() -> dict:
-    cp = await get_last_checkpoint()
     return {
         "status": "ok",
         "boptest_ready": app.state.testid is not None,
-        "last_sim_time":  cp[0] if cp else None,
-        "last_wall_time": cp[1].isoformat() if cp else None,
     }

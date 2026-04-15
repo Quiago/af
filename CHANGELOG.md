@@ -1,3 +1,7 @@
+### 2026-04-15 FEAT — AIChatBubble with OpenAI streaming + Perplexity-style UI
+- What: Replaced static mock chatbot with GPT-4o-mini streaming via openai SDK; fake model selector UI shows NVIDIA Nemotron-70B (default), Qwen3-235B, Mistral Large 2 — all backed by GPT-4o-mini with persona system prompts; Perplexity-style 420×560px chat window with empty state + quick prompts, streaming bubble cursor, auto-expand textarea, model dropdown; VITE_OPENAI_API_KEY env var; Zustand chatStore for messages/model/loading
+- Why: Demo requires believable AI assistant that never reveals the underlying model, with a polished UI matching the design aesthetic
+
 ### 2026-04-15 FIX — Solar orientation + weather param animations in Digital Twin
 - What: solarIncidenceZone() rewritten from first principles using actual camera-basis sun direction — blinking now correctly tracks North face (morning–noon) then West face (afternoon) matching what the sun orb visibly illuminates; glass facades pulse blue/orange on ext-temp change + persistent tint proportional to temperature deviation; exponential fog driven by humidity slider (0% = clear, 100% = thick mist); 250-point wind particle stream drifts in +X with opacity/speed proportional to wind km/h
 - Why: Blink was incorrectly on South zone (physics-based solarIncidenceZone used real-world geometry, not camera-aligned sun); weather spinners had no visual feedback in the 3D view

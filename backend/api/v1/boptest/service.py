@@ -5,17 +5,13 @@ Endpoints follow the pattern: /<request>/<testid>
 Exception: POST /testcases/<name>/select  (no testid yet)
 """
 from __future__ import annotations
-
-import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import httpx
 
-from core.config import settings
-
-logger = logging.getLogger(__name__)
+from core.config import settings, logger
 
 
 # ─── Exception ────────────────────────────────────────────────────────────────
@@ -335,7 +331,9 @@ async def setup_boptest() -> str:
     3. Deploy a fresh test case
     """
     # 1. Check checkpoint table
+    logger.info("Before get last checkpoint testid from checkpoint")
     cp = await get_last_checkpoint()
+    logger.info(cp)
     if cp:
         _, _, checkpoint_testid = cp
         if checkpoint_testid:

@@ -6,9 +6,7 @@ import logging
 from typing import Any
 
 from fastapi import WebSocket
-
-logger = logging.getLogger(__name__)
-
+from core.config import logger
 
 class WebSocketManager:
     def __init__(self) -> None:

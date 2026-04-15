@@ -10,7 +10,8 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from api.v1.building.schemas import BuildingSnapshot, GridConfig, HistoryPoint, KPIs
 from api.v1.building.service import build_grid_config, get_history
 
-logger = logging.getLogger(__name__)
+from core.config import logger
+
 router = APIRouter(prefix="/building", tags=["building"])
 
 

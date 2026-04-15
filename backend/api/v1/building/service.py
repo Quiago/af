@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import time
-import logging
+from core.config import logger
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -35,8 +35,6 @@ def get_zone_configs() -> list[ZoneConfig]:
 
 def get_zone_by_id(zone_id: str) -> ZoneConfig | None:
     return next((z for z in get_zone_configs() if z.id == zone_id), None)
-
-logger = logging.getLogger(__name__)
 
 K_TO_C = 273.15
 

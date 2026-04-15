@@ -5,11 +5,11 @@ inspected or triggered directly from the Swagger docs or the backend.
 """
 from __future__ import annotations
 
-import logging
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
 
+from core.config import logger
 from api.v1.boptest import service
 from api.v1.boptest.schemas import (
     AdvanceRequest,
@@ -24,7 +24,6 @@ from api.v1.boptest.schemas import (
     StepResponse,
 )
 
-logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/boptest", tags=["boptest"])
 
 

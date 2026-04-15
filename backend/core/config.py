@@ -6,6 +6,9 @@ from typing import Any
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+import logging
+import colorlog
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -80,3 +83,24 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+handler = colorlog.StreamHandler()
+handler.setFormatter(
+    colorlog.ColoredFormatter(
+        "%(log_color)s%(asctime)s  %(levelname)-8s%(reset)s  %(name)s — %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        log_colors={
+            "DEBUG": "cyan",
+            "INFO": "green",
+            "WARNING": "yellow",
+            "ERROR": "red",
+            "CRITICAL": "bold_red",
+        },
+    )
+)
+
+logger = colorlog.getLogger(__name__)
+logger.setLevel(logging.INFO)
+logger.handlers.clear()
+logger.addHandler(handler)
+logger.propagate = False

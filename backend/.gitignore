@@ -50,3 +50,5 @@ BOPTEST_DB_PATH=./boptest.db
 *.db
 *.db-shm
 *.db-wal
+
+backend/boptest_docker

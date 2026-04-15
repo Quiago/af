@@ -369,3 +369,7 @@
 ### 2026-04-08 FEAT — 1-hour forecast charts + range-to-AI analysis tools
 - What: Replaced streaming random-walk with static 1-hour forecast (30 min history + 60 min ahead). PRIMARY chart shows baseline vs simulated dual-track. SimulationDeltas switched to "next hr" window (removed annual /yr). Range selector on each chart with "Ask AI →" that pre-fills AIChatBubble context.
 - Why: Simulation is a forecast, not live data — static forward projection is more meaningful; 1-hr window matches the actual planning horizon.
+
+### 2026-04-16 ARCH — Refactor: desacoplar sim-stack del backend (Fases 0-5)
+- What: BOPTEST + loop de simulación extraídos a sim-stack/ aislado (sim-worker + sim-service + TimescaleDB). Backend convertido a API pura con feature flag USE_SIM_SERVICE. Cleanup: eliminados main.py.legacy, main2.py, comentarios obsoletos; CLAUDE.md actualizado con nueva arquitectura.
+- Why: backend/main.py era monolítico (API + loop simulación). La separación permite escalar y evolucionar la simulación independientemente del backend de negocio.

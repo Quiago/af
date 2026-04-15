@@ -160,46 +160,96 @@ react to store changes via hooks.
 
 ---
 
+## System Architecture
+
+```
+sim-stack/  (docker-compose.yml + docker-compose.override.yml)
+  BOPTEST web:80 ◄──── sim-worker  ────► TimescaleDB:5432
+                                              │
+                                        sim-service:8001
+                                        /current /history /control /status
+
+backend/ :8000
+  USE_SIM_SERVICE=true  → GET /current   from sim-service (live data)
+                        → GET /history   from TimescaleDB direct (asyncpg)
+                        → POST /control  via sim-service
+  USE_SIM_SERVICE=false → legacy BOPTEST polling loop (boptest/)
+
+frontend/ :5173  →  unchanged contract (WS + REST)
+```
+
+### Dual-Mode Feature Flag
+`USE_SIM_SERVICE` in `backend/.env`:
+- `false` (default) — backend runs its own BOPTEST polling loop (legacy mode, safe rollback)
+- `true` — backend consumes sim-service for live data + TimescaleDB for history
+
 ## Backend Architecture
 
 ### Stack
 - Python 3.11+
 - FastAPI
-- SQLAlchemy 2.0 (async)
+- SQLAlchemy 2.0 (async) — legacy SQLite mode only
+- asyncpg — direct TimescaleDB queries (sim-service mode)
 - Pydantic v2
 - WebSockets (native FastAPI)
-- httpx for BOPTEST client
+- httpx — for BOPTEST client (legacy) and sim-service client
 
 ### Domain-Driven Structure
 ```
 backend/
 ├── api/
 │   └── v1/
-│       ├── api.py              # Global router
-│       ├── boptest/
+│       ├── router.py
+│       ├── boptest/            # Legacy BOPTEST proxy (USE_SIM_SERVICE=false)
 │       │   ├── router.py
 │       │   ├── service.py
 │       │   └── schemas.py
-│       ├── building/
+│       ├── building/           # Snapshot + history (branches on flag)
 │       │   ├── router.py
 │       │   ├── service.py
 │       │   └── schemas.py
+│       ├── bms/                # BMS control (proxies to sim-service when flag=true)
+│       ├── benchmark/          # Optimizer runner (legacy only for now)
 │       └── websocket/
-│           ├── router.py
+│           ├── router.py       # Background broadcast loop (sim-service mode)
 │           └── manager.py
 ├── core/
-│   ├── config.py               # Settings via pydantic-settings
-│   ├── database.py             # SQLAlchemy async engine
-│   └── boptest_client.py       # BOPTEST REST client
-├── models/                     # SQLAlchemy ORM models
+│   ├── config.py               # Settings + use_sim_service / sim_service_url / timescale_url
+│   └── sim_client.py           # httpx wrapper for sim-service /current /control
+├── db/
+│   ├── engine.py               # SQLAlchemy async engine (legacy SQLite)
+│   └── timescale.py            # asyncpg pool + time_bucket queries (sim-service mode)
 ├── main.py
 └── .env
+```
+
+### sim-stack Structure
+```
+sim-stack/
+├── docker-compose.yml          # BOPTEST runtime (DO NOT modify)
+├── docker-compose.override.yml # Our extensions: timescaledb, sim-worker, sim-service
+├── .env.sim                    # sim-stack variables (SIMDB_PASSWORD, BOPTEST_STEP, etc.)
+├── db/
+│   └── init.sql                # TimescaleDB schema + hypertables
+└── service/
+    ├── sim-worker/             # Autonomous BOPTEST advance loop → TimescaleDB
+    │   ├── worker.py           # Main loop: connect → initialize → advance → persist
+    │   ├── boptest_client.py   # httpx BOPTEST client (no backend dependency)
+    │   ├── db.py               # asyncpg write helpers
+    │   └── config.py
+    └── sim-service/            # Internal FastAPI: exposes TimescaleDB to backend
+        ├── main.py             # /health /current /history /status /control /config/grid
+        ├── building_transform.py  # outputs dict → BuildingSnapshot
+        ├── db.py               # asyncpg read helpers + time_bucket
+        ├── schemas.py          # Same contract as backend/api/v1/building/schemas.py
+        └── config.py
 ```
 
 ### No Hardcoding Rules
 - ALL config via environment variables in `.env` + `core/config.py`
 - BOPTEST URL, polling interval, zone layout — all in config
 - Never hardcode zone names, variable names, or thresholds in logic
+- sim-stack config lives in `sim-stack/.env.sim` — never in docker-compose directly
 
 ---
 

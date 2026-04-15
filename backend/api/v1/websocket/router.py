@@ -7,7 +7,7 @@ When USE_SIM_SERVICE=true:
 
 When USE_SIM_SERVICE=false (legacy):
   - On connect: send app.state.current_snapshot if available
-  - Broadcast is driven by main.py _polling_loop calling ws_manager.broadcast()
+  - Broadcast is driven by the backend boptest polling loop calling ws_manager.broadcast()
 """
 from __future__ import annotations
 

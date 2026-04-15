@@ -1,3 +1,7 @@
+### 2026-04-16 ARCH — sim-worker: autonomous BOPTEST advance loop (Fase 2)
+- What: Implemented sim-stack/service/sim-worker/ — boptest_client.py (self-contained httpx client), db.py (asyncpg write helpers for measurements/kpis/checkpoint/control_overrides), worker.py (full async live loop: connect → initialize → advance_and_collect → persist → repeat with auto-recovery on testid expiry); no backfill, no wall-clock mapping; worker is fully independent of the backend
+- Why: Extract BOPTEST simulation loop from backend into isolated sim-stack worker process
+
 ### 2026-04-16 ARCH — sim-stack scaffolding + TimescaleDB (Fase 0 + Fase 1)
 - What: Created sim-stack/service/sim-worker/ and sim-stack/service/sim-service/ skeletons (Dockerfiles, requirements.txt, config stubs); added sim-stack/db/init.sql with TimescaleDB hypertables (measurements, simulation_runs, control_overrides, kpi_snapshots); created docker-compose.override.yml extending BOPTEST compose with timescaledb:5432, sim-worker, sim-service services on boptest_net; added .env.sim template
 - Why: First two phases of refactor separating BOPTEST simulation from backend — sim-stack becomes the isolated operational domain

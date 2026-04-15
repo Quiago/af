@@ -1,3 +1,7 @@
+### 2026-04-16 ARCH — sim-service: internal FastAPI over TimescaleDB (Fase 3)
+- What: Implemented sim-stack/service/sim-service/ — config.py (pydantic-settings), schemas.py (BuildingSnapshot/HistoryPoint/SimWorkerStatus/ControlPayload identical to backend contract), db.py (asyncpg read helpers with time_bucket aggregation + fallback), building_transform.py (ported from backend/api/v1/building/service.py — pure functions, no backend imports), main.py (FastAPI: /health /current /history /status /control /config/grid)
+- Why: Expose sim-stack operational data via a clean HTTP boundary so the backend can consume it without knowing about BOPTEST or TimescaleDB internals
+
 ### 2026-04-16 ARCH — sim-worker: autonomous BOPTEST advance loop (Fase 2)
 - What: Implemented sim-stack/service/sim-worker/ — boptest_client.py (self-contained httpx client), db.py (asyncpg write helpers for measurements/kpis/checkpoint/control_overrides), worker.py (full async live loop: connect → initialize → advance_and_collect → persist → repeat with auto-recovery on testid expiry); no backfill, no wall-clock mapping; worker is fully independent of the backend
 - Why: Extract BOPTEST simulation loop from backend into isolated sim-stack worker process

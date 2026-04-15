@@ -40,6 +40,13 @@ class Settings(BaseSettings):
     benchmark_scenario: str = "peak_cool_day"
     benchmark_price: str = "dynamic"
 
+    # sim-stack integration
+    # Set USE_SIM_SERVICE=true to consume sim-service + TimescaleDB instead of
+    # running the BOPTEST polling loop locally (Fase 4 of the refactor).
+    use_sim_service: bool = False
+    sim_service_url: str = "http://localhost:8001"
+    timescale_url: str = ""  # postgresql://sim:pass@localhost:5432/simdb
+
     # CORS
     cors_origins: str = "http://localhost:5173"
 

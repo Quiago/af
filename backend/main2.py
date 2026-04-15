@@ -11,21 +11,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.v1.router import router
 from api.v1.websocket.manager import ws_manager
-from api.v1.boptest.service import (
-    advance_and_collect,
-    advance_only,
-    BOPTESTError,
-    close_client,
-    _fresh_testid,
-    get_last_checkpoint,
-    initialize,
-    save_checkpoint,
-    save_measurements_bulk,
-    set_step,
-    setup_boptest,
-    validate_testid,
-)
-from api.v1.building.service import build_snapshot
 from core.config import settings, logger
 
 from dotenv import set_key
@@ -62,27 +47,40 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.bms_raw_outputs  = None   # latest advance() outputs for BMS endpoint
     app.state.benchmark_result = None
 
-    # ── BOPTEST ────────────────────────────────────────────────────────────────
-    try:
-        logger.info("Before testid from checkpoint")
-        testid = await setup_boptest()
-        logger.info("After testid from checkpoint")
-        app.state.testid = testid
-        set_key(".env", "BOPTEST_TEST_ID", testid)
-
-        logger.info("BOPTEST ready. testid=%s", testid)
-    except BOPTESTError as exc:
-        logger.warning(
-            "BOPTEST unavailable at startup (%s). "
-            "POST /api/v1/boptest/restart once reachable.",
-            exc,
-        )
-    except Exception as exc:
-        logger.warning("Startup BOPTEST init failed: %s", exc)
+    # ── sim-service + TimescaleDB (when USE_SIM_SERVICE=true) ─────────────────
+    if settings.use_sim_service:
+        from core.sim_client import init_client as _init_sim
+        from db.timescale import init_pool as _init_ts, close_pool as _close_ts
+        _init_sim()
+        await _init_ts()
+        logger.info("sim-service mode active: %s", settings.sim_service_url)
+    else:
+        # Legacy mode: connect to BOPTEST directly
+        from api.v1.boptest.service import BOPTESTError, close_client, setup_boptest
+        try:
+            testid = await setup_boptest()
+            app.state.testid = testid
+            set_key(".env", "BOPTEST_TEST_ID", testid)
+            logger.info("BOPTEST ready. testid=%s", testid)
+        except BOPTESTError as exc:
+            logger.warning(
+                "BOPTEST unavailable at startup (%s). "
+                "POST /api/v1/boptest/restart once reachable.",
+                exc,
+            )
+        except Exception as exc:
+            logger.warning("Startup BOPTEST init failed: %s", exc)
 
     yield
 
-    await close_client()
+    if settings.use_sim_service:
+        from core.sim_client import close_client as _close_sim
+        from db.timescale import close_pool as _close_ts
+        await _close_sim()
+        await _close_ts()
+    else:
+        from api.v1.boptest.service import close_client
+        await close_client()
     logger.info("Shutdown complete.")
 
 

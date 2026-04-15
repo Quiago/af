@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from api.v1.building.schemas import BuildingSnapshot, GridConfig, HistoryPoint, KPIs
 from api.v1.building.service import build_grid_config, get_history
 
-from core.config import logger
+from core.config import logger, settings
 
 router = APIRouter(prefix="/building", tags=["building"])
 
@@ -21,7 +21,15 @@ class Resolution(str, Enum):
     one_day    = "1d"
 
 
-def _require_snapshot(request: Request) -> BuildingSnapshot:
+async def _require_snapshot(request: Request) -> BuildingSnapshot:
+    if settings.use_sim_service:
+        from core.sim_client import SimServiceError, get_current
+        try:
+            data = await get_current()
+            return BuildingSnapshot(**data)
+        except SimServiceError as exc:
+            raise HTTPException(status_code=503, detail=f"sim-service unavailable: {exc}") from exc
+
     snapshot = getattr(request.app.state, "current_snapshot", None)
     if snapshot is None:
         raise HTTPException(status_code=503, detail="Simulation not ready")
@@ -30,12 +38,12 @@ def _require_snapshot(request: Request) -> BuildingSnapshot:
 
 @router.get("/snapshot", response_model=BuildingSnapshot)
 async def get_snapshot(request: Request) -> BuildingSnapshot:
-    return _require_snapshot(request)
+    return await _require_snapshot(request)
 
 
 @router.get("/kpis", response_model=KPIs)
 async def get_kpis(request: Request) -> KPIs:
-    return _require_snapshot(request).kpis
+    return (await _require_snapshot(request)).kpis
 
 
 @router.get("/config", response_model=GridConfig)
@@ -49,6 +57,14 @@ async def get_latest(request: Request) -> BuildingSnapshot | None:
 
     Unlike /snapshot this never returns 503 — useful for polling during startup.
     """
+    if settings.use_sim_service:
+        from core.sim_client import SimServiceError, get_current
+        try:
+            data = await get_current()
+            return BuildingSnapshot(**data)
+        except SimServiceError:
+            return None
+
     return getattr(request.app.state, "current_snapshot", None)
 
 

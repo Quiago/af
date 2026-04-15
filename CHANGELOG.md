@@ -1,3 +1,7 @@
+### 2026-04-16 ARCH — Backend decoupling: consume sim-service + TimescaleDB (Fase 4)
+- What: Added backend/core/sim_client.py (httpx wrapper for sim-service) and backend/db/timescale.py (asyncpg pool for direct TimescaleDB queries); updated config.py with use_sim_service/sim_service_url/timescale_url; building/router.py and building/service.py get_history/get_timeseries now branch on USE_SIM_SERVICE flag; bms/router.py /snapshot and /control proxy to sim-service when flag=true; websocket/router.py adds background broadcast loop polling sim-service; main2.py promoted to main.py (no _polling_loop, feature-flag-driven lifespan); asyncpg added to requirements.txt
+- Why: Decouple backend from BOPTEST — USE_SIM_SERVICE=false keeps legacy mode, =true switches to sim-stack as the data source
+
 ### 2026-04-16 ARCH — sim-service: internal FastAPI over TimescaleDB (Fase 3)
 - What: Implemented sim-stack/service/sim-service/ — config.py (pydantic-settings), schemas.py (BuildingSnapshot/HistoryPoint/SimWorkerStatus/ControlPayload identical to backend contract), db.py (asyncpg read helpers with time_bucket aggregation + fallback), building_transform.py (ported from backend/api/v1/building/service.py — pure functions, no backend imports), main.py (FastAPI: /health /current /history /status /control /config/grid)
 - Why: Expose sim-stack operational data via a clean HTTP boundary so the backend can consume it without knowing about BOPTEST or TimescaleDB internals

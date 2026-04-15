@@ -1,4 +1,9 @@
-"""Transform raw BOPTEST advance() + forecast() output → BuildingSnapshot."""
+"""Transform raw BOPTEST advance() + forecast() output → BuildingSnapshot.
+
+When settings.use_sim_service is True the data source switches to:
+  - sim-service /current  for live snapshots
+  - TimescaleDB (asyncpg) for historical queries
+"""
 from __future__ import annotations
 
 import time
@@ -344,16 +349,25 @@ async def get_history(
     start_dt: datetime,
     end_dt: datetime,
 ) -> list[HistoryPoint]:
-    """Downsample boptest_measurements for the requested time window.
+    """Downsample measurements for the requested time window.
 
-    Groups by truncated timestamp (resolution), returns:
-      - AVG for temperature and CO2 (continuous values)
-      - MAX for fan power (peak demand is the meaningful aggregate)
-
-    Fallback: if the time range returns 0 rows (e.g. during a fresh backfill
-    that hasn't reached the requested window yet), the most recent 500 raw
-    rows are returned so the chart is never empty when data exists in the DB.
+    When USE_SIM_SERVICE=true → queries TimescaleDB via asyncpg (time_bucket).
+    When USE_SIM_SERVICE=false → queries SQLite via SQLAlchemy (legacy strftime).
     """
+    if settings.use_sim_service:
+        from db.timescale import get_history as _ts_history
+        rows_dicts = await _ts_history(resolution, start_dt, end_dt)
+        return [
+            HistoryPoint(
+                timestamp=int(r.get("timestamp") or 0),
+                core_temp_c=_safe_float(r.get("core_temp_c")),
+                fan_power_w=_safe_float(r.get("fan_power_w")),
+                core_co2_ppm=_safe_float(r.get("core_co2_ppm")),
+            )
+            for r in rows_dicts
+        ]
+
+    # ── Legacy: SQLite ────────────────────────────────────────────────────────
     from db.engine import AsyncSessionLocal
     from api.v1.boptest.models import BoptestMeasurement
 
@@ -429,10 +443,23 @@ async def get_timeseries(
 ) -> list[HistoryPoint]:
     """Flexible trending query — returns up to `limit` buckets.
 
-    When start_dt is None the most recent `limit` buckets are returned
-    (ORDER BY DESC LIMIT, then reversed for chronological output).
-    When start_dt is given the time range is honoured with the same limit cap.
+    When USE_SIM_SERVICE=true → queries TimescaleDB directly via asyncpg.
+    When USE_SIM_SERVICE=false → queries SQLite via SQLAlchemy (legacy).
     """
+    if settings.use_sim_service:
+        from db.timescale import get_timeseries as _ts_get
+        rows_dicts = await _ts_get(resolution, start_dt, end_dt, limit)
+        return [
+            HistoryPoint(
+                timestamp=int(r.get("timestamp") or 0),
+                core_temp_c=_safe_float(r.get("core_temp_c")),
+                fan_power_w=_safe_float(r.get("fan_power_w")),
+                core_co2_ppm=_safe_float(r.get("core_co2_ppm")),
+            )
+            for r in rows_dicts
+        ]
+
+    # ── Legacy: SQLite ────────────────────────────────────────────────────────
     from db.engine import AsyncSessionLocal
     from api.v1.boptest.models import BoptestMeasurement
 
@@ -453,7 +480,6 @@ async def get_timeseries(
         agg = agg.where(BoptestMeasurement.timestamp.between(start_dt, end_dt))
         agg = agg.order_by(bucket).limit(limit)
     else:
-        # Most recent N buckets
         agg = agg.where(BoptestMeasurement.timestamp <= end_dt)
         agg = agg.order_by(bucket.desc()).limit(limit)
 
@@ -469,3 +495,15 @@ async def get_timeseries(
         )
         for row in rows
     ]
+
+
+# ─── Helper ───────────────────────────────────────────────────────────────────
+
+def _safe_float(v: object) -> float | None:
+    if v is None:
+        return None
+    try:
+        f = float(v)  # type: ignore[arg-type]
+        return None if (f != f or abs(f) == float("inf")) else f
+    except (TypeError, ValueError):
+        return None

@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException, Request
 
 from api.v1.boptest.service import BOPTESTError, advance
 from .schemas import BmsControlPayload, BmsSnapshot
+from core.config import settings
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/bms", tags=["bms"])
@@ -103,18 +104,34 @@ def _read_val(outputs: dict, key: str) -> float:
 
 @router.get("/snapshot", response_model=BmsSnapshot)
 async def bms_snapshot(request: Request) -> BmsSnapshot:
-    """Build BMS snapshot from the latest advance() outputs stored by the polling loop.
+    """Build BMS snapshot from latest BOPTEST outputs.
 
-    Reads app.state.bms_raw_outputs — set by main.py on every simulation step.
-    No extra BOPTEST API call is needed; advance() already returns all outputs.
+    When USE_SIM_SERVICE=true → fetches raw outputs from sim-service /current.
+    When USE_SIM_SERVICE=false → reads app.state.bms_raw_outputs (legacy polling loop).
     """
-    testid: str | None = getattr(request.app.state, "testid", None)
-    if not testid:
-        raise HTTPException(status_code=503, detail="Simulation not ready — no testid")
+    if settings.use_sim_service:
+        from core.sim_client import SimServiceError, get_current
+        try:
+            snapshot_data = await get_current()
+        except SimServiceError as exc:
+            raise HTTPException(status_code=503, detail=f"sim-service unavailable: {exc}") from exc
+        # Reconstruct raw outputs from snapshot — use equipment metrics as proxy
+        # For a full BMS view, sim-service /current gives BuildingSnapshot, not raw outputs.
+        # We build the BMS snapshot from the equipment fields available.
+        raw = snapshot_data.get("_raw_outputs") or {}
+        if not raw:
+            raise HTTPException(
+                status_code=503,
+                detail="Raw outputs not available via sim-service — use /building/snapshot for structured data",
+            )
+    else:
+        testid: str | None = getattr(request.app.state, "testid", None)
+        if not testid:
+            raise HTTPException(status_code=503, detail="Simulation not ready — no testid")
 
-    raw: dict | None = getattr(request.app.state, "bms_raw_outputs", None)
-    if not raw:
-        raise HTTPException(status_code=503, detail="Simulation not ready — no data yet")
+        raw: dict | None = getattr(request.app.state, "bms_raw_outputs", None)
+        if not raw:
+            raise HTTPException(status_code=503, detail="Simulation not ready — no data yet")
 
     # ── Extract sensor values from advance() scalar outputs ──────────────────
     vals: dict[str, float] = {p: _read_val(raw, p) for p in _POINTS}
@@ -172,15 +189,26 @@ async def bms_snapshot(request: Request) -> BmsSnapshot:
 
 @router.post("/control")
 async def bms_control(payload: BmsControlPayload, request: Request) -> dict:
-    """
-    Write a setpoint override to BOPTEST.
+    """Write a setpoint override to BOPTEST.
 
-    IMPORTANT: All values must arrive already in BOPTEST native units:
-      - Temperatures  → Kelvin [K]
-      - Fractions     → 0.0–1.0 (not percent)
-      - Pressures     → Pascal [Pa]
-    The frontend is responsible for converting before posting.
+    When USE_SIM_SERVICE=true → proxies to sim-service POST /control.
+    When USE_SIM_SERVICE=false → calls BOPTEST advance directly (legacy).
+
+    All values must be in BOPTEST native units (K, Pa, fractions 0–1).
     """
+    if settings.use_sim_service:
+        from core.sim_client import SimServiceError, post_control
+        logger.info(
+            "BMS control (via sim-service): point=%s value=%.4f activate=%s",
+            payload.point_name, payload.value, payload.activate,
+        )
+        try:
+            result = await post_control(payload.point_name, payload.value, payload.activate)
+            return result
+        except SimServiceError as exc:
+            raise HTTPException(status_code=502, detail=f"sim-service error: {exc}") from exc
+
+    # ── Legacy: direct BOPTEST call ───────────────────────────────────────────
     testid: str | None = getattr(request.app.state, "testid", None)
     if not testid:
         raise HTTPException(status_code=503, detail="Simulation not ready — no testid")

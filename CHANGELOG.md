@@ -1,3 +1,7 @@
+### 2026-04-16 ARCH — sim-stack scaffolding + TimescaleDB (Fase 0 + Fase 1)
+- What: Created sim-stack/service/sim-worker/ and sim-stack/service/sim-service/ skeletons (Dockerfiles, requirements.txt, config stubs); added sim-stack/db/init.sql with TimescaleDB hypertables (measurements, simulation_runs, control_overrides, kpi_snapshots); created docker-compose.override.yml extending BOPTEST compose with timescaledb:5432, sim-worker, sim-service services on boptest_net; added .env.sim template
+- Why: First two phases of refactor separating BOPTEST simulation from backend — sim-stack becomes the isolated operational domain
+
 ### 2026-04-15 FEAT — Dynamic zone temperature model in Digital Twin
 - What: Zone temperatures now computed from extTemp + simHour + solar incidence using per-zone thermal mixing ratios (HVAC_SETPOINT 22.5°C; exterior mixing: Core 18%, perimeter ~42%); sun-facing zone gets up to +4.2°C solar gain at solar noon; sprite labels and zone colors update live as user moves sliders; hourOfDay/incidenceId hoisted to top of animate loop so labels always match solar state
 - Why: Zone labels were static/hardcoded and did not reflect the UI weather or time-of-day controls

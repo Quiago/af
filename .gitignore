@@ -18,7 +18,38 @@ backend/boptest_docker/
 backend/api/v1/simulator/testcases/*/models/wrapped.fmu
 backend/api/v1/simulator/testcases/*/models/Resources/
 backend/api/v1/simulator/testing/references/
-sim-stack
+
+# sim-stack: ignore BOPTEST runtime files, only track our custom additions
+# (docker-compose.override.yml, .env.sim, db/, service/sim-worker/, service/sim-service/)
+sim-stack/testcases/
+sim-stack/data/
+sim-stack/boptest_docker/
+sim-stack/bacnet/
+sim-stack/baselines/
+sim-stack/examples/
+sim-stack/forecast/
+sim-stack/kpis/
+sim-stack/parsing/
+sim-stack/testing/
+sim-stack/docs/
+sim-stack/.github/
+sim-stack/.pre-commit-config.yaml
+sim-stack/.travis.yml
+sim-stack/README.md
+sim-stack/contributors.md
+sim-stack/license.md
+sim-stack/releasenotes.md
+sim-stack/version.txt
+sim-stack/testcase.py
+sim-stack/docker-compose.yml
+sim-stack/service/LICENSE.md
+sim-stack/service/README.md
+sim-stack/service/ci/
+sim-stack/service/docs/
+sim-stack/service/provision/
+sim-stack/service/test/
+sim-stack/service/web/
+sim-stack/service/worker/
 
 # Node / frontend
 frontend/node_modules/
@@ -36,3 +67,4 @@ frontend/.env.local
 # Secrets
 .env
 backend/.env
+sim-stack/version.txt

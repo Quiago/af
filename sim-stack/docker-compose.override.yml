@@ -1,0 +1,100 @@
+# docker-compose.override.yml — sim-stack extensions
+#
+# Adds:  timescaledb, sim-worker, sim-service
+# Does NOT modify the BOPTEST services in docker-compose.yml.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.override.yml up
+#
+# The default compose command also picks up this file automatically
+# when both files are in the same directory.
+
+services:
+
+  # ── Attach existing BOPTEST services to boptest_net ─────────────────────────
+  # The original compose uses Docker's implicit default network.
+  # We add boptest_net so our new services can reach web/redis/minio by name.
+  web:
+    networks:
+      - boptest_net
+
+  redis:
+    networks:
+      - boptest_net
+
+  minio:
+    networks:
+      - boptest_net
+
+  worker:
+    networks:
+      - boptest_net
+
+  # ── TimescaleDB ──────────────────────────────────────────────────────────────
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    restart: unless-stopped
+    ports:
+      - "5432:5432"   # exposed to host for debugging (psql, DBeaver, etc.)
+    environment:
+      POSTGRES_DB: ${SIMDB_NAME:-simdb}
+      POSTGRES_USER: ${SIMDB_USER:-sim}
+      POSTGRES_PASSWORD: ${SIMDB_PASSWORD:?SIMDB_PASSWORD is required}
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+    networks:
+      - boptest_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${SIMDB_USER:-sim} -d ${SIMDB_NAME:-simdb}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  # ── sim-worker ───────────────────────────────────────────────────────────────
+  sim-worker:
+    build:
+      context: ./service/sim-worker
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      web:
+        condition: service_started
+    environment:
+      BOPTEST_URL: http://web
+      DATABASE_URL: postgresql://${SIMDB_USER:-sim}:${SIMDB_PASSWORD}@timescaledb:5432/${SIMDB_NAME:-simdb}
+      BOPTEST_TEST_CASE: ${BOPTEST_TEST_CASE:-multizone_office_simple_air}
+      BOPTEST_STEP: ${BOPTEST_STEP:-300}
+      LIVE_TICK_SECONDS: ${LIVE_TICK_SECONDS:-300}
+    networks:
+      - boptest_net
+
+  # ── sim-service ──────────────────────────────────────────────────────────────
+  sim-service:
+    build:
+      context: ./service/sim-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    ports:
+      - "8001:8001"   # exposed to host so backend can reach it during dev
+    environment:
+      DATABASE_URL: postgresql://${SIMDB_USER:-sim}:${SIMDB_PASSWORD}@timescaledb:5432/${SIMDB_NAME:-simdb}
+      BOPTEST_URL: http://web
+    networks:
+      - boptest_net
+
+# ── Volumes ──────────────────────────────────────────────────────────────────
+volumes:
+  timescale_data:
+    driver: local
+
+# ── Networks ─────────────────────────────────────────────────────────────────
+networks:
+  boptest_net:
+    driver: bridge

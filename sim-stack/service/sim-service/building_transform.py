@@ -66,12 +66,17 @@ def _build_zones(
         z = zc.id
         zone_cap = z.capitalize()
 
-        temp_k: float = outputs.get(f"hvac_reaZon{zone_cap}_TZon_y", K_TO_C + 21)
-        co2: float    = outputs.get(f"hvac_reaZon{zone_cap}_CO2Zon_y", 600.0)
+        temp_sig = settings.zone_temp_signal.format(zone_cap=zone_cap)
+        co2_sig  = settings.zone_co2_signal.format(zone_cap=zone_cap)
+        temp_k: float = outputs.get(temp_sig, K_TO_C + 21)
+        co2: float    = outputs.get(co2_sig, 600.0)
 
-        lower_k: float = (forecast.get(f"LowerSetp[{z}]") or [K_TO_C + 20])[0]
-        upper_k: float = (forecast.get(f"UpperSetp[{z}]") or [K_TO_C + 24])[0]
-        occ_vals = forecast.get(f"Occupancy[{z}]") or [0.0]
+        lower_key = settings.forecast_lower_setp.format(zone_id=z)
+        upper_key = settings.forecast_upper_setp.format(zone_id=z)
+        occ_key   = settings.forecast_occupancy.format(zone_id=z)
+        lower_k: float = (forecast.get(lower_key) or [K_TO_C + 20])[0]
+        upper_k: float = (forecast.get(upper_key) or [K_TO_C + 24])[0]
+        occ_vals = forecast.get(occ_key) or [0.0]
         occupancy = float(occ_vals[0]) > 0
 
         temp_c   = _k2c(temp_k)
@@ -99,10 +104,10 @@ def _build_zones(
 # ─── Equipment ────────────────────────────────────────────────────────────────
 
 def _build_chiller(outputs: dict[str, Any]) -> EquipmentData:
-    power_w: float  = outputs.get("chi_reaPChi_y", 0.0)
-    t_sup_k: float  = outputs.get("chi_reaTSup_y", K_TO_C + 7.0)
-    t_ret_k: float  = outputs.get("chi_reaTRet_y", K_TO_C + 12.0)
-    flow_m3s: float = outputs.get("chi_reaFloSup_y", 0.01)
+    power_w: float  = outputs.get(settings.chiller_power_signal, 0.0)
+    t_sup_k: float  = outputs.get(settings.chiller_supply_temp_signal, K_TO_C + 7.0)
+    t_ret_k: float  = outputs.get(settings.chiller_return_temp_signal, K_TO_C + 12.0)
+    flow_m3s: float = outputs.get(settings.chiller_flow_signal, 0.01)
 
     t_sup_c = _k2c(t_sup_k)
     t_ret_c = _k2c(t_ret_k)
@@ -145,10 +150,10 @@ def _build_chiller(outputs: dict[str, Any]) -> EquipmentData:
 
 
 def _build_ahu(outputs: dict[str, Any]) -> EquipmentData:
-    t_sup_k: float = outputs.get("hvac_reaAhu_TSup_y", K_TO_C + 16.0)
-    t_ret_k: float = outputs.get("hvac_reaAhu_TRet_y", K_TO_C + 22.0)
-    fan_w: float   = outputs.get("hvac_reaAhu_PFanSup_y", 0.0)
-    dp_pa: float   = outputs.get("hvac_reaAhu_dp_sup_y", 100.0)
+    t_sup_k: float = outputs.get(settings.ahu_supply_temp_signal, K_TO_C + 16.0)
+    t_ret_k: float = outputs.get(settings.ahu_return_temp_signal, K_TO_C + 22.0)
+    fan_w: float   = outputs.get(settings.ahu_fan_power_signal, 0.0)
+    dp_pa: float   = outputs.get(settings.ahu_pressure_signal, 100.0)
 
     t_sup_c   = _k2c(t_sup_k)
     t_ret_c   = _k2c(t_ret_k)
@@ -185,7 +190,7 @@ def _build_ahu(outputs: dict[str, Any]) -> EquipmentData:
 
 
 def _build_filter(outputs: dict[str, Any]) -> EquipmentData:
-    dp_pa: float = outputs.get("hvac_reaAhu_dp_sup_y", 100.0)
+    dp_pa: float = outputs.get(settings.ahu_pressure_signal, 100.0)
 
     if dp_pa > 350:
         status = "critical"

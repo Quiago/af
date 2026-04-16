@@ -377,3 +377,7 @@
 ### 2026-04-16 CONFIG — Fix docker-compose.override: remove network overrides que rompían BOPTEST
 - What: Eliminados los bloques `web/redis/minio/worker` del override (añadirlos a boptest_net los sacaba de la red default, rompiendo comunicación mc↔minio). Nuevos servicios usan la red default del proyecto directamente. TIMESCALE_URL en backend/.env actualizada a puerto 5430.
 - Why: `networks` en override reemplaza en lugar de mergear — mc-1 no podía resolver minio, web crasheaba por MinIO auth failure.
+
+### 2026-04-16 CONFIG — Eliminar hardcoding de señales BOPTEST en sim-service y sim-worker
+- What: FORECAST_POINTS hardcodeados reemplazados por GET /forecast_points dinámico en boptest_client.py. Todos los nombres de señales en building_transform.py y db.py movidos a settings (sim-service/config.py) con defaults para multizone_office_simple_air. Patrón de señal de zona, equipo, y campos de historia ahora configurables vía env vars.
+- Why: El código asumía únicamente multizone_office_simple_air. Para soportar otros test cases solo se requiere override de vars en .env.sim.

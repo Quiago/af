@@ -2,6 +2,9 @@
 
 Uses asyncpg directly for time-series queries with time_bucket().
 The pool is initialized once at app startup via lifespan().
+
+Signal names used in SQL queries are driven by settings so they can
+be overridden for different BOPTEST test cases without code changes.
 """
 from __future__ import annotations
 
@@ -88,16 +91,21 @@ async def get_history(
     bucket_interval = _BUCKET.get(resolution, "1 hour")
     pool = _get_pool()
 
+    # Signal names come from config — safe to embed (not user input)
+    temp_sig     = settings.history_temp_signal
+    fan_sig      = settings.history_fan_power_signal
+    co2_sig      = settings.history_co2_signal
+
     async with pool.acquire() as conn:
         rows = await conn.fetch(
-            """
+            f"""
             SELECT
                 EXTRACT(EPOCH FROM time_bucket($1::interval, wall_time))::bigint AS timestamp,
-                AVG((outputs->>'hvac_reaZonCor_TZon_y')::double precision) - 273.15
+                AVG((outputs->>'{temp_sig}')::double precision) - 273.15
                     AS core_temp_c,
-                MAX((outputs->>'hvac_reaAhu_PFanSup_y')::double precision)
+                MAX((outputs->>'{fan_sig}')::double precision)
                     AS fan_power_w,
-                AVG((outputs->>'hvac_reaZonCor_CO2Zon_y')::double precision)
+                AVG((outputs->>'{co2_sig}')::double precision)
                     AS core_co2_ppm
             FROM measurements
             WHERE wall_time BETWEEN $2 AND $3
@@ -114,14 +122,14 @@ async def get_history(
                 end_dt.isoformat(timespec="seconds"),
             )
             rows = await conn.fetch(
-                """
+                f"""
                 SELECT
                     EXTRACT(EPOCH FROM time_bucket('1 minute', wall_time))::bigint AS timestamp,
-                    AVG((outputs->>'hvac_reaZonCor_TZon_y')::double precision) - 273.15
+                    AVG((outputs->>'{temp_sig}')::double precision) - 273.15
                         AS core_temp_c,
-                    MAX((outputs->>'hvac_reaAhu_PFanSup_y')::double precision)
+                    MAX((outputs->>'{fan_sig}')::double precision)
                         AS fan_power_w,
-                    AVG((outputs->>'hvac_reaZonCor_CO2Zon_y')::double precision)
+                    AVG((outputs->>'{co2_sig}')::double precision)
                         AS core_co2_ppm
                 FROM measurements
                 GROUP BY time_bucket('1 minute', wall_time)

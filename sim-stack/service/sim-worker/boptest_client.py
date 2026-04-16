@@ -159,24 +159,38 @@ async def get_kpis(testid: str) -> dict[str, float]:
 
 # ─── Composite helpers ────────────────────────────────────────────────────────
 
-# Forecast points needed to build a full BuildingSnapshot.
-# Mirrors settings.forecast_point_names from the backend.
-FORECAST_POINTS = [
-    "LowerSetp[1]", "LowerSetp[2]", "LowerSetp[3]", "LowerSetp[4]", "LowerSetp[5]",
-    "UpperSetp[1]", "UpperSetp[2]", "UpperSetp[3]", "UpperSetp[4]", "UpperSetp[5]",
-    "Occupancy[1]", "Occupancy[2]", "Occupancy[3]", "Occupancy[4]", "Occupancy[5]",
-]
+async def get_forecast_points(testid: str) -> list[str]:
+    """GET /forecast_points/<testid> — list of available forecast point names."""
+    c = await get_client()
+    try:
+        resp = await c.get(f"/forecast_points/{testid}")
+        payload = _unwrap(resp, f"get_forecast_points({testid})")
+        return list(payload.keys()) if isinstance(payload, dict) else list(payload)
+    except BOPTESTError:
+        raise
+    except Exception as exc:
+        raise BOPTESTError(f"get_forecast_points failed: {exc}") from exc
 
 
 async def advance_and_collect(testid: str) -> tuple[dict, dict, dict]:
-    """Advance one step and return (outputs, forecast, kpis)."""
+    """Advance one step and return (outputs, forecast, kpis).
+
+    Forecast is best-effort: if the call fails (e.g. test case has different
+    point names) we log a warning and return an empty dict so measurements
+    and KPIs are still persisted.
+    """
     outputs = await advance(testid, {})
-    forecast = await get_forecast(
-        testid,
-        point_names=FORECAST_POINTS,
-        horizon=settings.boptest_step * 2,
-        interval=settings.boptest_step,
-    )
+    try:
+        points = await get_forecast_points(testid)
+        forecast = await get_forecast(
+            testid,
+            point_names=points,
+            horizon=settings.boptest_step * 2,
+            interval=settings.boptest_step,
+        )
+    except BOPTESTError as exc:
+        logger.warning("Forecast unavailable (non-fatal): %s", exc)
+        forecast = {}
     kpis = await get_kpis(testid)
     return outputs, forecast, kpis
 

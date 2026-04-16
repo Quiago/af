@@ -381,3 +381,7 @@
 ### 2026-04-16 CONFIG — Eliminar hardcoding de señales BOPTEST en sim-service y sim-worker
 - What: FORECAST_POINTS hardcodeados reemplazados por GET /forecast_points dinámico en boptest_client.py. Todos los nombres de señales en building_transform.py y db.py movidos a settings (sim-service/config.py) con defaults para multizone_office_simple_air. Patrón de señal de zona, equipo, y campos de historia ahora configurables vía env vars.
 - Why: El código asumía únicamente multizone_office_simple_air. Para soportar otros test cases solo se requiere override de vars en .env.sim.
+
+### 2026-04-16 FIX — sim-worker: persistir testid inmediatamente después de deploy
+- What: upsert_checkpoint() ahora se llama justo después de deploy_fresh() y _recover_testid(), no solo tras el primer advance tick. Elimina la ventana de 300s donde un restart perdía el testid.
+- Why: Si el worker se reiniciaba antes del primer tick, no había checkpoint y desplegaba una nueva instancia BOPTEST en lugar de reusar la existente.

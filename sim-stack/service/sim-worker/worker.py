@@ -44,8 +44,11 @@ async def _connect_boptest() -> str:
     """Obtain a valid testid, retrying until BOPTEST is reachable.
 
     Priority:
-    1. Resume testid from DB checkpoint (if valid on server)
-    2. Deploy a fresh test case
+    1. Resume testid from DB checkpoint (if still valid on server)
+    2. Deploy a fresh test case and immediately persist it
+
+    The testid is saved to simulation_runs right after deploy so that
+    a restart before the first tick can still resume the same instance.
     """
     while True:
         try:
@@ -61,10 +64,13 @@ async def _connect_boptest() -> str:
                 if await boptest.validate_testid(cp_testid):
                     logger.info("Checkpoint testid valid — resuming.")
                     return cp_testid
-                logger.warning("Checkpoint testid=%s expired on server.", cp_testid)
+                logger.warning("Checkpoint testid=%s expired on server — deploying fresh.", cp_testid)
 
-            # Deploy fresh
+            # Deploy fresh and immediately persist testid so any restart
+            # before the first advance tick can still resume this instance.
             testid = await boptest.deploy_fresh(settings.boptest_test_case)
+            await db.upsert_checkpoint(testid, 0.0, datetime.now(timezone.utc))
+            logger.info("Testid %s persisted to DB.", testid)
             return testid
 
         except BOPTESTError as exc:
@@ -180,6 +186,8 @@ async def _recover_testid(last_sim_secs: float) -> str:
         await boptest.initialize(testid, start_time=int(last_sim_secs), warmup_period=0)
     except BOPTESTError as exc:
         logger.warning("Re-initialize after recovery failed: %s", exc)
+    # Persist immediately so a restart before next tick resumes this instance.
+    await db.upsert_checkpoint(testid, last_sim_secs, datetime.now(timezone.utc))
     logger.info("Recovery complete: new testid=%s  sim_time=%.0f s", testid, last_sim_secs)
     return testid
 

@@ -373,3 +373,7 @@
 ### 2026-04-16 ARCH — Refactor: desacoplar sim-stack del backend (Fases 0-5)
 - What: BOPTEST + loop de simulación extraídos a sim-stack/ aislado (sim-worker + sim-service + TimescaleDB). Backend convertido a API pura con feature flag USE_SIM_SERVICE. Cleanup: eliminados main.py.legacy, main2.py, comentarios obsoletos; CLAUDE.md actualizado con nueva arquitectura.
 - Why: backend/main.py era monolítico (API + loop simulación). La separación permite escalar y evolucionar la simulación independientemente del backend de negocio.
+
+### 2026-04-16 CONFIG — Fix docker-compose.override: remove network overrides que rompían BOPTEST
+- What: Eliminados los bloques `web/redis/minio/worker` del override (añadirlos a boptest_net los sacaba de la red default, rompiendo comunicación mc↔minio). Nuevos servicios usan la red default del proyecto directamente. TIMESCALE_URL en backend/.env actualizada a puerto 5430.
+- Why: `networks` en override reemplaza en lugar de mergear — mc-1 no podía resolver minio, web crasheaba por MinIO auth failure.

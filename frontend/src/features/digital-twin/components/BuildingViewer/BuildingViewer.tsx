@@ -15,8 +15,6 @@ interface BuildingViewerProps {
   onHoverZone?:    (id: string | null) => void
   simHour?:        number
   extTemp?:        number
-  humidity?:       number
-  windSpeed?:      number
 }
 
 export function BuildingViewer({
@@ -27,11 +25,9 @@ export function BuildingViewer({
   onHoverZone     = () => {},
   simHour,
   extTemp,
-  humidity,
-  windSpeed,
 }: BuildingViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  useBuildingScene(canvasRef, viewMode, liveData, highlightedZone, onHoverZone, simHour, extTemp, humidity, windSpeed)
+  useBuildingScene(canvasRef, viewMode, liveData, highlightedZone, onHoverZone, simHour, extTemp)
 
   const zone = hoveredZone ? liveData.zones[hoveredZone as ZoneState['id']] : null
 

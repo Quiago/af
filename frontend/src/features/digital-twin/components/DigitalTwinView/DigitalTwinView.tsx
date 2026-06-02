@@ -3,12 +3,51 @@ import { BuildingViewer } from '../BuildingViewer/BuildingViewer'
 import { ActionTimeline } from '../ActionTimeline/ActionTimeline'
 import { useDigitalTwinData } from '../../hooks/useDigitalTwinData'
 import { useDashboardStore } from '../../../../store/dashboardStore'
+import { computePMV, pmvCategory } from '../../lib/comfort'
+import { computeZoneTemps } from '../../lib/thermalModel'
 import styles from './DigitalTwinView.module.css'
 
 function fmtDelta(pct: number, lowerIsBetter: boolean) {
   const good  = lowerIsBetter ? pct < 0 : pct > 0
   const arrow = pct < 0 ? '↓' : '↑'
   return { arrow, abs: Math.abs(pct).toFixed(0), good }
+}
+
+const CAT_COLOR: Record<string, string> = {
+  Cold: '#4c8bff', Cool: '#37b6c6', Comfort: '#37c98a', Warm: '#f0a030', Hot: '#ef4d4d',
+}
+
+// Daily building-load profile (0..1) — low overnight, climbs through the day,
+// peaks mid-afternoon (cooling + occupancy). Drives the live energy/CO₂/cost.
+function loadFactor(h: number): number {
+  const peak = Math.exp(-Math.pow((h - 15) / 5.2, 2))
+  return 0.34 + 0.66 * Math.max(0, Math.min(1, peak))
+}
+const ENERGY_PEAK = 345   // kWh/h at the afternoon peak (Dubai hotel scale)
+
+// ── Prominent top metric card ─────────────────────────────────────────────────
+function MetricCard({
+  label, value, unit, accent, delta, lowerIsBetter = true,
+}: {
+  label: string; value: string; unit: string; accent?: string
+  delta?: number; lowerIsBetter?: boolean
+}) {
+  return (
+    <div className={styles.metricCard}>
+      <div className={styles.metricLabel}>{label}</div>
+      <div className={styles.metricValue} style={accent ? { color: accent } : undefined}>
+        {value}<span className={styles.metricUnit}>{unit}</span>
+      </div>
+      {delta != null && delta !== 0 && (() => {
+        const { arrow, abs, good } = fmtDelta(delta, lowerIsBetter)
+        return (
+          <div className={`${styles.metricDelta} ${good ? styles.metricGood : styles.metricBad}`}>
+            {arrow} {abs}%
+          </div>
+        )
+      })()}
+    </div>
+  )
 }
 
 const FLOORS = [
@@ -113,19 +152,58 @@ export function DigitalTwinView() {
   const sliderPct = (simHour / 24) * 100
 
   // ── Weather ──────────────────────────────────────────────────────────────
-  const [extTemp,   setExtTemp]   = useState(32)
-  const [humidity,  setHumidity]  = useState(65)
-  const [windSpeed, setWindSpeed] = useState(12)
+  const [extTemp, setExtTemp] = useState(32)
 
   // ── Live data ────────────────────────────────────────────────────────────
   const { liveData } = useDigitalTwinData()
-  const simulationProjection = useDashboardStore((s) => s.simulationProjection)
-  const kpis                 = useDashboardStore((s) => s.snapshot?.kpis)
+  const cfd          = useDashboardStore((s) => s.cfdCinematic)
 
-  const CO2_FACTOR = 0.45
-  const kpiEnergy  = kpis?.energy_kwh  != null ? `${kpis.energy_kwh.toFixed(1)} kWh`  : '—'
-  const kpiCost    = kpis?.cost_total   != null ? `${kpis.cost_total.toFixed(2)} AED`   : '—'
-  const kpiCO2     = kpis?.energy_kwh  != null ? `${(kpis.energy_kwh * CO2_FACTOR).toFixed(2)} kg` : '—'
+  // ── Live metrics — follow a realistic daily flow (energy/CO₂/cost climb
+  //    through the day & with ext-temp; comfort is steadier). Move as the user
+  //    scrubs the time slider or as the day advances. ────────────────────────
+  const CO2_FACTOR  = 0.45   // kg CO₂ per kWh
+  const DEWA_TARIFF = 0.44   // AED per kWh
+  const extFactor   = 1 + (extTemp - 30) * 0.02
+  const energyBase  = ENERGY_PEAK * loadFactor(simHour) * extFactor
+
+  // Average thermal comfort (PMV) — same dynamic model as the 3D labels
+  const dynT    = computeZoneTemps(extTemp, simHour, null)
+  const zoneArr = Object.values(liveData.zones)
+  const pmvBase = zoneArr.length
+    ? zoneArr.reduce((s, z) => s + computePMV(dynT[z.id], z.humidity ?? 50), 0) / zoneArr.length
+    : 0
+
+  // While the CFD animation plays (a recommendation was just applied), ramp the
+  // metrics toward their post-change values and show a delta on each card.
+  const applying = cfd != null
+  const [applyProg, setApplyProg] = useState(0)
+  useEffect(() => {
+    if (!applying) { setApplyProg(0); return }
+    let raf = 0
+    const start = performance.now()
+    const tick = () => {
+      const t = Math.min(1, (performance.now() - start) / 2400)
+      setApplyProg(1 - Math.pow(1 - t, 3))      // easeOutCubic
+      if (t < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [applying])
+
+  const dE = cfd?.kpiDeltas.energy ?? 0
+  const dC = cfd?.kpiDeltas.co2 ?? 0
+  const dK = cfd?.kpiDeltas.comfort ?? 0
+  const energyNow = energyBase * (1 + (dE / 100) * applyProg)
+  const co2Now    = energyNow * CO2_FACTOR
+  const costNow   = energyNow * DEWA_TARIFF
+  // Applying a warming setpoint nudges PMV up (a touch less comfortable)
+  const pmvNow    = pmvBase + (dK !== 0 ? 0.35 : 0) * applyProg
+
+  const energyVal = energyNow.toFixed(0)
+  const co2Val    = co2Now.toFixed(0)
+  const costVal   = costNow.toFixed(0)
+  const pmvCat    = pmvCategory(pmvNow)
+  const pmvStr    = `${pmvNow >= 0 ? '+' : ''}${pmvNow.toFixed(1)}`
 
   const activeFloor     = useDashboardStore((s) => s.selectedFloor)
   const setFloor        = useDashboardStore((s) => s.setSelectedFloor)
@@ -148,60 +226,31 @@ export function DigitalTwinView() {
             onHoverZone={setHoveredZone}
             simHour={simHour}
             extTemp={extTemp}
-            humidity={humidity}
-            windSpeed={windSpeed}
           />
         </div>
 
-        {/* HUD top-left */}
-        <div className={styles.hud}>
-          {simulationProjection ? (
-            <>
-              {simulationProjection.kpiDeltas.energy !== 0 && (() => {
-                const { arrow, abs, good } = fmtDelta(simulationProjection.kpiDeltas.energy, true)
-                return (
-                  <span className={`${styles.hudBadge} ${good ? styles.hudDeltaGood : styles.hudDeltaBad}`}>
-                    <span className={styles.hudKey}>ENERGY</span>
-                    {arrow} {abs}%
-                  </span>
-                )
-              })()}
-              {simulationProjection.kpiDeltas.co2 !== 0 && (() => {
-                const { arrow, abs, good } = fmtDelta(simulationProjection.kpiDeltas.co2, true)
-                return (
-                  <span className={`${styles.hudBadge} ${good ? styles.hudDeltaGood : styles.hudDeltaBad}`}>
-                    <span className={styles.hudKey}>CO₂</span>
-                    {arrow} {abs}%
-                  </span>
-                )
-              })()}
-              {simulationProjection.kpiDeltas.comfort !== 0 && (() => {
-                const { arrow, abs, good } = fmtDelta(simulationProjection.kpiDeltas.comfort, false)
-                return (
-                  <span className={`${styles.hudBadge} ${good ? styles.hudDeltaGood : styles.hudDeltaBad}`}>
-                    <span className={styles.hudKey}>COMFORT</span>
-                    {arrow} {abs}%
-                  </span>
-                )
-              })()}
-              <span className={`${styles.hudBadge} ${styles.hudSimulate}`}>▶ SIM</span>
-            </>
-          ) : (
-            <>
-              <span className={styles.hudBadge}>
-                <span className={styles.hudKey}>ENERGY</span>{kpiEnergy}
-              </span>
-              <span className={styles.hudBadge}>
-                <span className={styles.hudKey}>COST</span>{kpiCost}
-              </span>
-              <span className={styles.hudBadge}>
-                <span className={styles.hudKey}>CO₂</span>{kpiCO2}
-              </span>
-              {liveData.isLiveData && (
-                <span className={`${styles.hudBadge} ${styles.hudLive}`}>LIVE</span>
-              )}
-            </>
-          )}
+        {/* HUD top-left — prominent live metrics (deltas only while applying) */}
+        <div className={styles.metrics}>
+          <MetricCard
+            label="ENERGY" value={energyVal} unit=" kWh"
+            delta={applying ? dE : undefined} lowerIsBetter
+          />
+          <MetricCard
+            label="CO₂" value={co2Val} unit=" kg"
+            delta={applying ? dC : undefined} lowerIsBetter
+          />
+          <MetricCard
+            label="COST" value={costVal} unit=" AED"
+            delta={applying ? dE : undefined} lowerIsBetter
+          />
+          <MetricCard
+            label="COMFORT" value={pmvStr} unit={` PMV · ${pmvCat}`}
+            accent={CAT_COLOR[pmvCat]}
+            delta={applying ? dK : undefined} lowerIsBetter={false}
+          />
+          {applying
+            ? <span className={`${styles.metricTag} ${styles.metricSim}`}>▶ APPLYING</span>
+            : liveData.isLiveData && <span className={`${styles.metricTag} ${styles.metricLive}`}>● LIVE</span>}
         </div>
 
         {/* View toggle top-right */}
@@ -277,24 +326,6 @@ export function DigitalTwinView() {
               min={-10}
               max={55}
               onChange={setExtTemp}
-            />
-            <NumericSpinner
-              label="HUMIDITY"
-              value={humidity}
-              unit="%"
-              step={1}
-              min={0}
-              max={100}
-              onChange={setHumidity}
-            />
-            <NumericSpinner
-              label="WIND"
-              value={windSpeed}
-              unit=" km/h"
-              step={1}
-              min={0}
-              max={120}
-              onChange={setWindSpeed}
             />
           </div>
 

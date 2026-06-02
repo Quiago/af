@@ -1,9 +1,12 @@
 import { create } from 'zustand'
 import type { BuildingSnapshot, TimePreset, ActiveView } from '../types/building.types'
 import type { ConnectionStatus } from '../lib/websocket'
-import type { SimulationProjection } from '../features/digital-twin/types/simulation.types'
+import type { SimulationProjection, CfdCinematic, SimZoneId } from '../features/digital-twin/types/simulation.types'
 
 const MAX_HISTORY = 288 // 24h at 5-min steps
+
+// Flythrough order for the CFD cinematic — primary zone first, then the rest.
+const ALL_ZONES: SimZoneId[] = ['cor', 'nor', 'eas', 'sou', 'wes']
 
 // Pre-expand all equipment zones used by the backend
 const DEFAULT_EXPANDED = new Set(['Central Plant', 'Air Handling'])
@@ -27,6 +30,9 @@ interface DashboardState {
   simulationProjection: SimulationProjection | null
   appliedRecIds: Set<string>
 
+  // CFD cinematic — set on apply, played once by the 3D scene, then cleared
+  cfdCinematic: CfdCinematic | null
+
   setSnapshot: (snapshot: BuildingSnapshot) => void
   appendToHistory: (snapshot: BuildingSnapshot) => void
   selectZone: (zoneId: string | null) => void
@@ -37,7 +43,8 @@ interface DashboardState {
   setActiveView: (view: ActiveView) => void
   setSelectedFloor: (floor: number) => void
   setSimulationProjection: (p: SimulationProjection | null) => void
-  applyRecommendation: (id: string) => void
+  applyRecommendation: (id: string, primaryZoneId?: SimZoneId, kpiDeltas?: { energy: number; comfort: number; co2: number }) => void
+  endCfd: () => void
 }
 
 export const useDashboardStore = create<DashboardState>((set) => ({
@@ -52,6 +59,7 @@ export const useDashboardStore = create<DashboardState>((set) => ({
   selectedFloor: 1,
   simulationProjection: null,
   appliedRecIds: new Set<string>(),
+  cfdCinematic: null,
 
   setSnapshot: (snapshot) =>
     set((state) => {
@@ -97,9 +105,24 @@ export const useDashboardStore = create<DashboardState>((set) => ({
 
   setSimulationProjection: (p) => set({ simulationProjection: p }),
 
-  applyRecommendation: (id) =>
-    set((state) => ({
-      appliedRecIds: new Set([...state.appliedRecIds, id]),
-      simulationProjection: null,
-    })),
+  applyRecommendation: (id, primaryZoneId, kpiDeltas) =>
+    set((state) => {
+      const floor = state.selectedFloor
+      const cfd: CfdCinematic | null = primaryZoneId
+        ? {
+            jobId:         `${id}-${Date.now()}`,
+            floor,
+            primaryZoneId,
+            zoneIds:       [primaryZoneId, ...ALL_ZONES.filter((z) => z !== primaryZoneId)],
+            kpiDeltas:     kpiDeltas ?? { energy: 0, comfort: 0, co2: 0 },
+          }
+        : state.cfdCinematic
+      return {
+        appliedRecIds:        new Set([...state.appliedRecIds, id]),
+        simulationProjection: null,
+        cfdCinematic:         cfd,
+      }
+    }),
+
+  endCfd: () => set({ cfdCinematic: null }),
 }))

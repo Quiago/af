@@ -36,35 +36,39 @@ interface Recommendation {
   primaryMetric: PrimaryMetric
 }
 
+// Recommendations are framed as cooling-setpoint moves — exactly what the
+// platform's two models produce in practice: a temperature/occupancy forecast +
+// an MPC that returns optimal zone setpoints. No direct actuator (damper)
+// overrides, so each one is defensible to a facility manager / head of engineering.
 const INITIAL_RECS: Recommendation[] = [
   {
     id: 'rec-1',
-    zone: 'LOBBY / CONF',
+    zone: 'GUESTROOMS · W',
     severity: 'high',
-    confidence: 91,
-    reason: 'AHU at full capacity during low-occupancy hours — CO₂ at 415 ppm, damper over-ventilating.',
+    confidence: 88,
+    reason: 'During the afternoon peak this zone is kept cooler than it needs to be. The comfort model shows it stays comfortable at 24°C, cutting peak-hour energy.',
     currentLabel: 'CURRENT',
-    currentVal: '100%',
+    currentVal: '22.5°C',
     recLabel: 'RECOMMENDED',
-    recVal: '15%',
-    unit: 'OA damper',
-    impact: '↓ 68 kWh/day · AED 7,942/yr',
-    zoneId: 'cor',
-    projectionOverride: { damperPosition: 0.15 },
-    kpiDeltas: { energy: -47, comfort: 2, co2: -12 },
-    primaryMetric: { key: 'zone_temp', label: 'Damper effect — Lobby Temp', unit: '°C', zoneId: 'cor' },
+    recVal: '24.0°C',
+    unit: 'setpoint',
+    impact: '↓ 61 kWh/day · AED 7,140/yr',
+    zoneId: 'wes',
+    projectionOverride: { temperature: 24.0 },
+    kpiDeltas: { energy: -38, comfort: -4, co2: -10 },
+    primaryMetric: { key: 'zone_temp', label: 'Peak setpoint — Guestrooms W', unit: '°C', zoneId: 'wes' },
   },
   {
     id: 'rec-2',
-    zone: 'GUESTROOMS S',
+    zone: 'GUESTROOMS · S',
     severity: 'medium',
-    confidence: 78,
-    reason: 'Guestrooms overcooled 1.8°C below comfort setpoint during DEWA peak window (14:00–19:00).',
+    confidence: 81,
+    reason: 'Zone running 1.8°C below its comfort setpoint. The comfort model shows it stays comfortable at 23°C, so cooling can ease off.',
     currentLabel: 'CURRENT',
-    currentVal: '21°C',
+    currentVal: '21.0°C',
     recLabel: 'RECOMMENDED',
-    recVal: '23°C',
-    unit: 'cooling SP',
+    recVal: '23.0°C',
+    unit: 'setpoint',
     impact: '↓ 45 kWh/day · AED 5,256/yr',
     zoneId: 'sou',
     projectionOverride: { temperature: 23.0 },
@@ -75,18 +79,18 @@ const INITIAL_RECS: Recommendation[] = [
     id: 'rec-3',
     zone: 'F&B LOUNGE',
     severity: 'medium',
-    confidence: 65,
-    reason: 'Outside air damper running 30% above IAQ minimum — CO₂ stable at 420 ppm, well below 800 ppm limit.',
+    confidence: 76,
+    reason: 'The lounge is empty overnight, so it does not need full cooling. Letting it drift to 25°C until morning saves energy with no impact on guests.',
     currentLabel: 'CURRENT',
-    currentVal: '75%',
+    currentVal: '22.5°C',
     recLabel: 'RECOMMENDED',
-    recVal: '45%',
-    unit: 'OA damper',
-    impact: '↓ 28 kWh/day · AED 3,271/yr',
+    recVal: '25.0°C',
+    unit: 'setpoint',
+    impact: '↓ 33 kWh/day · AED 3,860/yr',
     zoneId: 'nor',
-    projectionOverride: { damperPosition: 0.45 },
-    kpiDeltas: { energy: -22, comfort: 1, co2: 5 },
-    primaryMetric: { key: 'zone_co2', label: 'OA Damper — F&B CO₂', unit: 'ppm', zoneId: 'nor' },
+    projectionOverride: { temperature: 25.0 },
+    kpiDeltas: { energy: -26, comfort: 0, co2: -7 },
+    primaryMetric: { key: 'zone_temp', label: 'Night setback — F&B Lounge', unit: '°C', zoneId: 'nor' },
   },
 ]
 
@@ -134,7 +138,7 @@ export function RecommendationsPanel() {
   }
 
   function handleApply(rec: Recommendation) {
-    applyRecommendation(rec.id)
+    applyRecommendation(rec.id, rec.zoneId, rec.kpiDeltas)
   }
 
   // Step 1 — show rejection reason sheet

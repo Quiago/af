@@ -2,8 +2,8 @@ import type { ZoneState } from '../types/digitalTwin.types'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const LAT_RAD = (41.98 * Math.PI) / 180   // Chicago (BOPTEST default)
-const DAY_OF_YEAR = 199                    // peak_cool_day scenario
+const LAT_RAD = (25.2048 * Math.PI) / 180  // Dubai (25hours Hotel demo facility)
+const DAY_OF_YEAR = 199                     // peak_cool_day scenario (mid-July)
 
 // ─── Solar position ────────────────────────────────────────────────────────
 

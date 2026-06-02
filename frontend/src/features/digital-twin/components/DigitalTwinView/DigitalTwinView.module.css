@@ -26,55 +26,84 @@
   display: block;
 }
 
-/* ── HUD top-left — Apple vibrancy glass (exact formula) ─────── */
-.hud {
+/* ── HUD top-left — prominent live metric cards ─────────────── */
+.metrics {
   position: absolute;
   top: 12px;
   left: 14px;
   display: flex;
+  align-items: stretch;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 8px;
+  max-width: 72%;
   z-index: 10;
   pointer-events: none;
 }
 
-.hudBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 10px;
-  /* Apple's exact vibrancy: blur + saturation boost + translucent white */
+.metricCard {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 98px;
+  padding: 8px 13px 9px;
+  background: var(--color-glass-bg);
+  backdrop-filter: blur(16px) saturate(170%);
+  -webkit-backdrop-filter: blur(16px) saturate(170%);
+  border: 0.5px solid var(--color-glass-stroke);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-elevated, var(--shadow-sm));
+}
+
+.metricLabel {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  color: var(--color-text-faint);
+}
+
+.metricValue {
+  font-family: var(--font-mono);
+  font-size: 23px;
+  font-weight: 700;
+  line-height: 1.05;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.metricUnit {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin-left: 2px;
+}
+
+.metricDelta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+}
+.metricGood { color: var(--color-status-ok); }
+.metricBad  { color: var(--color-status-critical); }
+
+.metricTag {
+  align-self: center;
+  padding: 5px 11px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: var(--tracking-wide);
   background: var(--color-glass-bg);
   backdrop-filter: blur(14px) saturate(160%);
   -webkit-backdrop-filter: blur(14px) saturate(160%);
   border: 0.5px solid var(--color-glass-stroke);
-  border-radius: var(--radius-full);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--color-text);
-  box-shadow: var(--shadow-sm);
 }
-
-.hudKey {
-  color: var(--color-text-faint);
-  font-size: 8px;
-  letter-spacing: var(--tracking-wide);
-  text-transform: uppercase;
-}
-
-.hudLive {
-  color: var(--color-status-ok);
-  border-color: rgba(26, 142, 95, 0.30);
-  font-weight: 600;
-  letter-spacing: var(--tracking-wide);
-}
-
-.hudSimulate {
+.metricLive { color: var(--color-status-ok); border-color: rgba(26, 142, 95, 0.30); }
+.metricSim {
   color: var(--color-deep-purple);
   border-color: rgba(50, 42, 92, 0.35);
-  background: rgba(50, 42, 92, 0.08);
-  font-weight: 600;
-  letter-spacing: var(--tracking-wide);
+  background: rgba(50, 42, 92, 0.10);
   animation: pulse-primary 2s ease-in-out infinite;
 }
 

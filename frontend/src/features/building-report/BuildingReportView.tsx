@@ -125,7 +125,7 @@ function computeAnomalies(
         location: zone.id.toUpperCase(),
         aedPerDay: parseFloat((delta * 3.5 * 0.32).toFixed(1)),
         cause: `Temperature ${delta.toFixed(1)}°C above setpoint — chilled water supply may be inadequate`,
-        action: 'Lower SAT by 1.5°C and increase VAV damper to 80%',
+        action: 'MPC: lower the zone cooling setpoint 1.5°C; verify chilled-water supply temperature',
       })
     } else if (delta > 1.0) {
       anomalies.push({
@@ -135,7 +135,7 @@ function computeAnomalies(
         location: zone.id.toUpperCase(),
         aedPerDay: parseFloat((delta * 2.5 * 0.32).toFixed(1)),
         cause: `Temperature ${delta.toFixed(1)}°C above setpoint`,
-        action: 'Increase cooling output by 1°C and monitor 30-min trend',
+        action: 'MPC: trim the cooling setpoint 1°C; monitor the 30-min trend',
       })
     } else if (delta < -2.0) {
       anomalies.push({
@@ -145,7 +145,7 @@ function computeAnomalies(
         location: zone.id.toUpperCase(),
         aedPerDay: parseFloat((Math.abs(delta) * 2.0 * 0.32).toFixed(1)),
         cause: `Zone is ${Math.abs(delta).toFixed(1)}°C below setpoint — excess energy use`,
-        action: 'Raise setpoint by 1°C or reduce VAV damper flow',
+        action: 'MPC: raise the cooling setpoint 1°C — comfort model confirms PMV stays in band',
       })
     }
 
@@ -157,7 +157,7 @@ function computeAnomalies(
         location: zone.id.toUpperCase(),
         aedPerDay: 8.5,
         cause: `CO₂ at ${co2} ppm — ventilation severely inadequate, occupant health at risk`,
-        action: 'Open OA damper to minimum 30% and increase fresh air supply',
+        action: 'Increase fresh-air ventilation until CO₂ falls below 800 ppm',
       })
     } else if (co2 > 800) {
       anomalies.push({

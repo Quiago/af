@@ -7,7 +7,7 @@ import { SimulationDeltas } from '../digital-twin/components/SimulationDeltas/Si
 import { DebugTimelines } from '../digital-twin/components/DebugTimelines/DebugTimelines'
 import { useDashboardStore } from '../../store/dashboardStore'
 import { useDigitalTwinData } from '../digital-twin/hooks/useDigitalTwinData'
-import type { SimulationProjection } from '../digital-twin/types/simulation.types'
+import type { SimulationProjection, SimZoneId } from '../digital-twin/types/simulation.types'
 import './DashboardPage.css'
 
 // ─── Compact rec card shown inside the simulation twin column ─────────────────
@@ -58,7 +58,7 @@ function SimRecCard({ projection }: { projection: SimulationProjection }) {
       <div className="src-actions">
         <button
           className="src-btn src-btn--apply"
-          onClick={() => applyRecommendation(recommendationId)}
+          onClick={() => applyRecommendation(recommendationId, Object.keys(projection.zoneOverrides)[0] as SimZoneId, projection.kpiDeltas)}
         >
           ✓ Apply
         </button>

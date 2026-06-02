@@ -1,39 +1,28 @@
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js'
 import { useDashboardStore } from '../../../store/dashboardStore'
 import type { DigitalTwinState, ZoneState } from '../types/digitalTwin.types'
+import type { CfdCinematic } from '../types/simulation.types'
 import { solarPosition } from '../lib/solarPhysics'
+import {
+  BW, BD, FH, NF, HW, HD,
+  ZONE_IDS, ZONE_NAMES, ZONE_GEOM,
+  WALL_SEGMENTS, WALL_T,
+} from '../lib/buildingLayout'
+import { buildFurniture } from '../lib/furniture'
+import { FloorFluid } from '../lib/eulerFluid'
+import { comfort, type ComfortResult } from '../lib/comfort'
+import { computeZoneTemps } from '../lib/thermalModel'
 
-// ─── DOE multizone_office_simple_air — real building constants ───────────────
-// Chicago, IL office building | Deru et al. 2009
-// 5 zones: North, South, East, West (perimeter) + Core
-
-const BW = 50       // Width East-West  (m)
-const BD = 33.25    // Depth North-South (m)
-const FH = 2.74     // Floor height      (m)
-const NF = 3        // Floors
-const HW = BW / 2
-const HD = BD / 2
-
-const D_NS  = 207.58  / BW
-const D_MID = BD - 2 * D_NS
-const D_EW  = 131.416 / D_MID
-const D_CW  = BW - 2 * D_EW
-
-const ZONE_IDS: ZoneState['id'][] = ['nor', 'sou', 'eas', 'wes', 'cor']
-
-const ZONE_GEOM: Record<ZoneState['id'], { w: number; d: number; cx: number; cz: number }> = {
-  nor: { w: BW,   d: D_NS,  cx: 0,             cz: -HD + D_NS / 2  },
-  sou: { w: BW,   d: D_NS,  cx: 0,             cz:  HD - D_NS / 2  },
-  eas: { w: D_EW, d: D_MID, cx:  HW - D_EW/2,  cz: 0               },
-  wes: { w: D_EW, d: D_MID, cx: -HW + D_EW/2,  cz: 0               },
-  cor: { w: D_CW, d: D_MID, cx: 0,             cz: 0               },
-}
-
-const ZONE_NAMES: Record<ZoneState['id'], string> = {
-  nor: 'NORTH', sou: 'SOUTH', eas: 'EAST', wes: 'WEST', cor: 'CORE',
-}
+// ─── Scene-specific constants (not part of the shared building layout) ───────
+const EXPLODE_GAP = 3.6   // extra vertical separation (m) between floors in exploded 3D view
+const SUN_EL_CAP  = 0.42  // ~24° — cap the DISPLAYED sun elevation so the orb stays in the
+                          // visible sky band (azimuth stays real, so it still crosses E→S→W)
 
 // ─── Temperature → 4-stop color ramp ────────────────────────────────────────
 
@@ -53,39 +42,56 @@ function tempToColor(t: number): THREE.Color {
 
 // ─── Zone sprite label canvas drawing ────────────────────────────────────────
 
+const LBL_W = 224, LBL_H = 108
+
 function drawZoneLabel(
   ctx: CanvasRenderingContext2D,
   name: string,
   tempC: number,
+  cf: ComfortResult,
   color: THREE.Color,
 ): void {
-  const W = 192, H = 64
+  const W = LBL_W, H = LBL_H
   ctx.clearRect(0, 0, W, H)
 
   const r = Math.round(color.r * 255)
   const g = Math.round(color.g * 255)
   const b = Math.round(color.b * 255)
 
-  ctx.fillStyle = `rgba(${r},${g},${b},0.84)`
+  // Card background tinted by zone temperature
+  ctx.fillStyle = `rgba(${r},${g},${b},0.86)`
   ctx.beginPath()
-  if (ctx.roundRect) ctx.roundRect(2, 2, W - 4, H - 4, 12)
+  if (ctx.roundRect) ctx.roundRect(2, 2, W - 4, H - 4, 14)
   else               ctx.rect(2, 2, W - 4, H - 4)
   ctx.fill()
-
-  ctx.strokeStyle = 'rgba(255,255,255,0.52)'
+  ctx.strokeStyle = 'rgba(255,255,255,0.55)'
   ctx.lineWidth   = 1.5
   ctx.stroke()
 
-  ctx.fillStyle    = '#ffffff'
-  ctx.font         = 'bold 22px Inter,system-ui,sans-serif'
   ctx.textAlign    = 'center'
   ctx.textBaseline = 'top'
-  ctx.fillText(name, W / 2, 7)
 
-  ctx.font         = '18px Inter,system-ui,sans-serif'
-  ctx.fillStyle    = 'rgba(255,255,255,0.88)'
-  ctx.textBaseline = 'top'
-  ctx.fillText(`${tempC.toFixed(1)}°C`, W / 2, 36)
+  // Zone name
+  ctx.fillStyle = '#ffffff'
+  ctx.font      = 'bold 26px Inter,system-ui,sans-serif'
+  ctx.fillText(name, W / 2, 9)
+
+  // Temperature
+  ctx.fillStyle = 'rgba(255,255,255,0.92)'
+  ctx.font      = '20px Inter,system-ui,sans-serif'
+  ctx.fillText(`${tempC.toFixed(1)}°C`, W / 2, 41)
+
+  // Comfort chip — PMV value + category, coloured by category
+  const cy = 72, ch = 28, cw = W - 36
+  ctx.fillStyle = cf.color
+  ctx.beginPath()
+  if (ctx.roundRect) ctx.roundRect((W - cw) / 2, cy, cw, ch, 14)
+  else               ctx.rect((W - cw) / 2, cy, cw, ch)
+  ctx.fill()
+  ctx.fillStyle = '#0c1116'
+  ctx.font      = 'bold 16px Inter,system-ui,sans-serif'
+  const pmvStr  = `${cf.pmv >= 0 ? '+' : ''}${cf.pmv.toFixed(1)}`
+  ctx.fillText(`PMV ${pmvStr} · ${cf.category}`, W / 2, cy + 5)
 }
 
 interface SpriteEntry {
@@ -96,14 +102,14 @@ interface SpriteEntry {
 
 function makeSpriteEntry(name: string, tempC: number, color: THREE.Color): SpriteEntry {
   const canvas = document.createElement('canvas')
-  canvas.width  = 192
-  canvas.height = 64
+  canvas.width  = LBL_W
+  canvas.height = LBL_H
   const ctx  = canvas.getContext('2d')!
-  drawZoneLabel(ctx, name, tempC, color)
+  drawZoneLabel(ctx, name, tempC, comfort(tempC, 50), color)
   const texture = new THREE.CanvasTexture(canvas)
   const mat     = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false })
   const sprite  = new THREE.Sprite(mat)
-  sprite.scale.set(7.5, 2.5, 1)
+  sprite.scale.set(8.6, 4.15, 1)
   return { sprite, canvas, texture }
 }
 
@@ -147,53 +153,50 @@ function sunColorFromEl(el: number): THREE.Color {
 }
 
 /**
- * Sun/moon DISPLAY position — camera-aligned artistic arc.
+ * Real solar arc → world direction (unit vector from the building toward the sun).
  *
- * The default camera looks from (65, 40, 68) toward the building's NORTH face
- * (-Z direction).  Chicago's solar noon is due South (+Z), i.e. directly behind
- * the camera — physically correct positions are never in frame.
- *
- * Instead we arc the sun across the VISIBLE upper sky using the camera's own
- * screen-space basis projected back into world space:
- *   screen-right ≈ world (0.722, 0, -0.690)
- *   screen-up    ≈ world (-0.255, 0.930, -0.267)
- *   screen-fwd   ≈ world (-0.642, -0.368, -0.672)
- *
- * Verified numerically: these positions appear at screen_y ≈ 0.70-0.85,
- * well inside the visible sky strip above the building.
+ * World axes: +X = East, −X = West, +Z = South, −Z = North.
+ * solarPosition() returns a compass azimuth (0 = North, increasing clockwise
+ * through East) and an elevation, so:
+ *   x =  cos(el)·sin(az)   (east)
+ *   y =  sin(el)           (up)
+ *   z = −cos(el)·cos(az)   (−Z north / +Z south)
+ * At solar noon az ≈ π (due south) → the sun sits high in the southern sky.
  */
-
-// Pre-computed camera screen-basis (default orbit position)
-const _CF: [number,number,number] = [-0.642, -0.368, -0.672]  // forward
-const _CU: [number,number,number] = [-0.255,  0.930, -0.267]  // up
-const _CR: [number,number,number] = [ 0.722,  0.000, -0.690]  // right
-
-function sunDisplayPos(hourOfDay: number, R: number): THREE.Vector3 {
-  // t=0 at 6 am, t=1 at 8 pm — sun arcs right→center→left
-  const t  = Math.max(0, Math.min(1, (hourOfDay - 6) / 14))
-  const sx = Math.cos(Math.PI * t)                   // +1 east/right, −1 west/left
-  // sy ≥ 0.42 guarantees dy > 0 (world y > 0, i.e. above the ground plane)
-  const sy = 0.42 + Math.sin(Math.PI * t) * 0.06    // 0.42→0.48→0.42 (arc height)
-
-  const dx = _CF[0] + sy * _CU[0] + sx * 0.50 * _CR[0]
-  const dy = _CF[1] + sy * _CU[1] + sx * 0.50 * _CR[1]
-  const dz = _CF[2] + sy * _CU[2] + sx * 0.50 * _CR[2]
-  const len = Math.sqrt(dx*dx + dy*dy + dz*dz)
-  return new THREE.Vector3(dx/len * R, dy/len * R, dz/len * R)
+function sunWorldDir(az: number, el: number): THREE.Vector3 {
+  const ce = Math.cos(el)
+  return new THREE.Vector3(ce * Math.sin(az), Math.sin(el), -ce * Math.cos(az))
 }
 
-function moonDisplayPos(hourOfDay: number, R: number): THREE.Vector3 {
-  // Moon arcs during night hours (20h–6h).  Simple east→center→west sweep.
-  const h = hourOfDay >= 20 ? hourOfDay - 20 : hourOfDay + 4   // 0 at 20h, 10 at 6h
-  const t  = Math.max(0, Math.min(1, h / 10))
-  const sx = Math.cos(Math.PI * t)
-  const sy = 0.44  // ≥ 0.42 → guaranteed above the ground plane
+/**
+ * Per-facade direct-solar load (0–1) for the four perimeter zones:
+ *   load = max(0, facadeNormal · sunDir) · max(0, sin(el))
+ * i.e. how square-on the sun hits each wall, scaled by how high it is.
+ * All walls read 0 at night.
+ */
+function facadeSolarLoads(az: number, el: number): Record<ZoneState['id'], number> {
+  const strength = Math.max(0, Math.sin(el))
+  const dir = sunWorldDir(az, el)
+  return {
+    nor: Math.max(0, -dir.z) * strength,   // north normal (0,0,−1)
+    sou: Math.max(0,  dir.z) * strength,   // south normal (0,0, 1)
+    eas: Math.max(0,  dir.x) * strength,   // east  normal (1,0, 0)
+    wes: Math.max(0, -dir.x) * strength,   // west  normal (−1,0,0)
+    cor: 0,                                 // core — no exterior facade
+  }
+}
 
-  const dx = _CF[0] + sy * _CU[0] + sx * 0.40 * _CR[0]
-  const dy = _CF[1] + sy * _CU[1] + sx * 0.40 * _CR[1]
-  const dz = _CF[2] + sy * _CU[2] + sx * 0.40 * _CR[2]
-  const len = Math.sqrt(dx*dx + dy*dy + dz*dz)
-  return new THREE.Vector3(dx/len * R, dy/len * R, dz/len * R)
+// ─── Heat → 4-stop ramp (facade solar + thermal load) ────────────────────────
+const H_COLD  = new THREE.Color(0x2a6cff)
+const H_TEAL  = new THREE.Color(0x14b8a6)
+const H_AMBER = new THREE.Color(0xffae34)
+const H_HOT   = new THREE.Color(0xff3a14)
+function heatToColor(h: number, out: THREE.Color): THREE.Color {
+  h = Math.max(0, Math.min(1, h))
+  if      (h < 0.34) out.lerpColors(H_COLD,  H_TEAL,  h / 0.34)
+  else if (h < 0.67) out.lerpColors(H_TEAL,  H_AMBER, (h - 0.34) / 0.33)
+  else               out.lerpColors(H_AMBER, H_HOT,   (h - 0.67) / 0.33)
+  return out
 }
 
 // ─── Structural materials — ghost frame, all transparent ─────────────────────
@@ -209,23 +212,36 @@ function makeMaterials() {
 // ─── Building geometry ────────────────────────────────────────────────────────
 
 interface BuildingObjects {
-  group:         THREE.Group
-  zoneMeshes:    Map<ZoneState['id'], THREE.Mesh[]>
-  zoneMeshMats:  Map<string, THREE.MeshPhongMaterial>   // key: "${id}_${floor}"
-  glassMats:     Map<ZoneState['id'], THREE.MeshPhongMaterial>
-  slabMeshes:    THREE.Mesh[]
-  floorSlabMats: THREE.MeshPhongMaterial[]
+  group:           THREE.Group
+  floorGroups:     THREE.Group[]                          // one per floor — exploded vertically
+  topGroup:        THREE.Group                            // roof + parapet + AHUs + penthouse
+  wallGroups:      THREE.Group[]                          // interior partition walls, per floor
+  furnitureGroups: THREE.Group[]                          // procedural furniture, per floor
+  zoneMeshes:      Map<ZoneState['id'], THREE.Mesh[]>
+  zoneMeshMats:    Map<string, THREE.MeshPhongMaterial>   // key: "${id}_${floor}"
+  glassMats:       Map<ZoneState['id'], THREE.MeshPhongMaterial>
+  slabMeshes:      THREE.Mesh[]
+  floorSlabMats:   THREE.MeshPhongMaterial[]
 }
 
 function buildBuilding(mats: ReturnType<typeof makeMaterials>): BuildingObjects {
   const { mSteel, mSpan, mRoof } = mats
-  const group = new THREE.Group()
+  // Root group holds per-floor sub-groups + a top group; each floor group can be
+  // offset vertically (exploded view) independently.
+  const group       = new THREE.Group()
+  const floorGroups: THREE.Group[] = []
+  const topGroup    = new THREE.Group()
 
   const zoneMeshMats = new Map<string, THREE.MeshPhongMaterial>()
   const zoneMeshes   = new Map<ZoneState['id'], THREE.Mesh[]>(ZONE_IDS.map((id) => [id, []]))
   const glassMats    = new Map<ZoneState['id'], THREE.MeshPhongMaterial>()
   const floorSlabMats: THREE.MeshPhongMaterial[] = []
   const slabMeshes:    THREE.Mesh[]               = []
+  const wallGroups:      THREE.Group[] = []   // interior partition walls, per floor
+  const furnitureGroups: THREE.Group[] = []   // procedural furniture, per floor
+
+  const WALL_H  = FH * 0.82   // open-top dollhouse — walls below the ceiling
+  const wallMat = new THREE.MeshStandardMaterial({ color: 0xd7d6cd, roughness: 0.92, metalness: 0.0 })
 
   // Glass pane materials — one per perimeter zone facade, colored like zone
   for (const id of ['nor', 'sou', 'eas', 'wes'] as ZoneState['id'][]) {
@@ -242,6 +258,13 @@ function buildBuilding(mats: ReturnType<typeof makeMaterials>): BuildingObjects 
     const yBase = f * FH
     const volY  = yBase + (FH - volH) / 2 + 0.04
 
+    // Per-floor group — children keep their absolute Y; the group is offset
+    // each frame for the exploded view.
+    const fg = new THREE.Group()
+    fg.userData['floor'] = f
+    group.add(fg)
+    floorGroups.push(fg)
+
     // ── Floor slab — transparent, provides floor separation ───────────────
     const slabMat = new THREE.MeshPhongMaterial({
       color: 0x3a5070, opacity: 0.16, transparent: true, depthWrite: false, shininess: 4,
@@ -252,7 +275,7 @@ function buildBuilding(mats: ReturnType<typeof makeMaterials>): BuildingObjects 
     slab.position.set(0, yBase, 0)
     slab.userData['floor'] = f
     slabMeshes.push(slab)
-    group.add(slab)
+    fg.add(slab)
 
     // Slab edge definition lines
     const slabEdge = new THREE.LineSegments(
@@ -260,14 +283,14 @@ function buildBuilding(mats: ReturnType<typeof makeMaterials>): BuildingObjects 
       new THREE.LineBasicMaterial({ color: 0x3a5878, opacity: 0.45, transparent: true }),
     )
     slabEdge.position.copy(slab.position)
-    group.add(slabEdge)
+    fg.add(slabEdge)
 
     // ── Zone volumes — PRIMARY visual element (one per zone per floor) ─────
     for (const id of ZONE_IDS) {
       const g   = ZONE_GEOM[id]
       const mat = new THREE.MeshPhongMaterial({
         color: 0x80b8e0, shininess: 30,
-        transparent: true, opacity: 0.78, depthWrite: true,
+        transparent: true, opacity: 0.78, depthWrite: false,
       })
       zoneMeshMats.set(`${id}_${f}`, mat)
 
@@ -276,7 +299,7 @@ function buildBuilding(mats: ReturnType<typeof makeMaterials>): BuildingObjects 
       vol.position.set(g.cx, volY, g.cz)
       vol.userData['zoneId'] = id
       vol.userData['floor']  = f
-      group.add(vol)
+      fg.add(vol)
       zoneMeshes.get(id)!.push(vol)
     }
 
@@ -284,20 +307,20 @@ function buildBuilding(mats: ReturnType<typeof makeMaterials>): BuildingObjects 
     for (const [cx, cz] of [[-HW,-HD],[HW,-HD],[-HW,HD],[HW,HD]] as [number,number][]) {
       const col = new THREE.Mesh(new THREE.BoxGeometry(0.50, FH, 0.50), mSteel)
       col.position.set(cx, yBase + FH/2, cz)
-      group.add(col)
+      fg.add(col)
     }
     for (const cz of [-HD, HD]) {
       for (const cx of [-16.67, -8.33, 0, 8.33, 16.67]) {
         const col = new THREE.Mesh(new THREE.BoxGeometry(0.35, FH, 0.35), mSteel)
         col.position.set(cx, yBase + FH/2, cz)
-        group.add(col)
+        fg.add(col)
       }
     }
     for (const cx of [-HW, HW]) {
       for (const cz of [-HD + 6.65, -HD + 13.3, HD - 13.3, HD - 6.65]) {
         const col = new THREE.Mesh(new THREE.BoxGeometry(0.35, FH, 0.35), mSteel)
         col.position.set(cx, yBase + FH/2, cz)
-        group.add(col)
+        fg.add(col)
       }
     }
 
@@ -321,7 +344,7 @@ function buildBuilding(mats: ReturnType<typeof makeMaterials>): BuildingObjects 
     ] as [number,number,number,number,number,number][]) {
       const s = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mSpan)
       s.position.set(x, y, z)
-      group.add(s)
+      fg.add(s)
     }
 
     // ── N/S glazing — 12 panes, WWR ≈ 33% ─────────────────────────────────
@@ -334,10 +357,10 @@ function buildBuilding(mats: ReturnType<typeof makeMaterials>): BuildingObjects 
         const px = -HW + 0.35 + pW * (p + 0.5)
         const pane = new THREE.Mesh(new THREE.BoxGeometry(pW - 0.12, winH, 0.10), gmat)
         pane.position.set(px, yBase + winY + winH/2, sign * HD)
-        group.add(pane)
+        fg.add(pane)
         const mull = new THREE.Mesh(new THREE.BoxGeometry(0.12, winH, 0.18), mSteel)
         mull.position.set(px - pW/2, yBase + winY + winH/2, sign * HD)
-        group.add(mull)
+        fg.add(mull)
       }
     }
 
@@ -351,18 +374,42 @@ function buildBuilding(mats: ReturnType<typeof makeMaterials>): BuildingObjects 
         const pz = -HD + 0.35 + pD * (p + 0.5)
         const pane = new THREE.Mesh(new THREE.BoxGeometry(0.10, winH, pD - 0.12), gmat)
         pane.position.set(sign * HW, yBase + winY + winH/2, pz)
-        group.add(pane)
+        fg.add(pane)
         const mull = new THREE.Mesh(new THREE.BoxGeometry(0.18, winH, 0.12), mSteel)
         mull.position.set(sign * HW, yBase + winY + winH/2, pz - pD/2)
-        group.add(mull)
+        fg.add(mull)
       }
     }
+
+    // ── Interior partition walls (with door gaps) — dollhouse, active floor ──
+    const wallG = new THREE.Group()
+    wallG.userData['floor'] = f
+    const wallY = yBase + 0.13 + WALL_H / 2
+    for (const s of WALL_SEGMENTS) {
+      const len = s.to - s.from
+      const mid = (s.from + s.to) / 2
+      const geo = s.orient === 'h'
+        ? new THREE.BoxGeometry(len, WALL_H, WALL_T)
+        : new THREE.BoxGeometry(WALL_T, WALL_H, len)
+      const wall = new THREE.Mesh(geo, wallMat)
+      if (s.orient === 'h') wall.position.set(mid, wallY, s.at)
+      else                  wall.position.set(s.at, wallY, mid)
+      wallG.add(wall)
+    }
+    fg.add(wallG)
+    wallGroups.push(wallG)
+
+    // ── Procedural furniture (shown on the active floor only) ───────────────
+    const furn = buildFurniture(yBase)
+    fg.add(furn)
+    furnitureGroups.push(furn)
   }
 
-  // ── Roof (ghost slab + parapet) ───────────────────────────────────────────
+  // ── Roof (ghost slab + parapet) — rides with the top floor ────────────────
+  group.add(topGroup)
   const roofSlab = new THREE.Mesh(new THREE.BoxGeometry(BW + 0.8, 0.50, BD + 0.8), mRoof)
   roofSlab.position.set(0, NF * FH, 0)
-  group.add(roofSlab)
+  topGroup.add(roofSlab)
 
   for (const [w, h, d, x, z] of [
     [BW,  0.9, 0.25, 0,   -HD],
@@ -372,7 +419,7 @@ function buildBuilding(mats: ReturnType<typeof makeMaterials>): BuildingObjects 
   ] as [number,number,number,number,number][]) {
     const para = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mRoof)
     para.position.set(x, NF * FH + 0.45, z)
-    group.add(para)
+    topGroup.add(para)
   }
 
   // Rooftop AHUs
@@ -380,60 +427,19 @@ function buildBuilding(mats: ReturnType<typeof makeMaterials>): BuildingObjects 
   for (let i = 0; i < 3; i++) {
     const ahu = new THREE.Mesh(new THREE.BoxGeometry(5.0, 1.6, 3.0), mSteel)
     ahu.position.set(-12 + i * 12, ahuY, 0)
-    group.add(ahu)
+    topGroup.add(ahu)
   }
 
   // Penthouse / stairwell
   const pent = new THREE.Mesh(new THREE.BoxGeometry(7.0, 3.8, 5.5), mRoof)
   pent.position.set(-HW + 5.5, NF * FH + 1.9 + 0.25, -HD + 4.0)
-  group.add(pent)
+  topGroup.add(pent)
 
-  return { group, zoneMeshes, zoneMeshMats, glassMats, slabMeshes, floorSlabMats }
+  return { group, floorGroups, topGroup, wallGroups, furnitureGroups, zoneMeshes, zoneMeshMats, glassMats, slabMeshes, floorSlabMats }
 }
 
-// ─── Dynamic zone thermal model ───────────────────────────────────────────────
-// Computes per-zone temperatures as a function of exterior conditions.
-//   extTemp     — exterior air temperature (°C), from UI spinner
-//   simHour     — time of day 0–24
-//   incidenceZone — which facade is receiving direct solar gain right now
-//
-// The model mixes exterior temperature with the HVAC setpoint using a zone-
-// specific factor, then adds time-of-day thermal lag and direct solar gain.
-//
-// Mixing ratios (higher = more coupled to exterior):
-//   North / South facades ≈ 40 % exterior (large glazing)
-//   East  / West  facades ≈ 44 % exterior (smaller but unshaded)
-//   Core                  ≈ 18 % exterior (insulated, equipment-dominated)
-
-const ZONE_MIXING: Record<ZoneState['id'], number> = {
-  nor: 0.42,
-  sou: 0.40,
-  eas: 0.44,
-  wes: 0.44,
-  cor: 0.18,
-}
-const HVAC_SETPOINT = 22.5  // °C — representative HVAC target for offices
-
-function computeZoneTemps(
-  extTemp: number,
-  simHour: number,
-  incidenceZone: ZoneState['id'] | null,
-): Record<ZoneState['id'], number> {
-  const h = ((simHour % 24) + 24) % 24
-  // Solar arc fraction: 0 at 6 am, peaks at 1 pm, 0 at 8 pm
-  const solarFrac = (h >= 6 && h <= 20) ? Math.sin(Math.PI * (h - 6) / 14) : 0
-  const result = {} as Record<ZoneState['id'], number>
-  for (const id of ZONE_IDS) {
-    const mix  = ZONE_MIXING[id]!
-    // Base: weighted mix of exterior + HVAC setpoint; time-of-day raises
-    // perimeter zones slightly as solar and internal heat accumulate
-    const base  = mix * extTemp + (1 - mix) * HVAC_SETPOINT + solarFrac * mix * 1.8
-    // Direct solar gain: +4 °C at peak solar noon on the sun-facing facade
-    const solar = id === incidenceZone ? solarFrac * 4.2 : 0
-    result[id]  = base + solar
-  }
-  return result
-}
+// Dynamic zone thermal model lives in lib/thermalModel.ts (shared with the
+// metric cards). computeZoneTemps is imported at the top of this file.
 
 // ─── Update zone + glass colors from live temperature ────────────────────────
 
@@ -469,11 +475,12 @@ function updateZoneMats(
       gm.color.copy(BASE_ZONE).lerp(tc, 0.50)
     }
 
-    // Redraw sprite label
+    // Redraw sprite label (temperature + PMV thermal comfort)
     const sd = spriteData.get(id)
     if (sd) {
       const ctx = sd.canvas.getContext('2d')!
-      drawZoneLabel(ctx, ZONE_NAMES[id], zone.temperature, tc)
+      const cf  = comfort(zone.temperature, zone.humidity ?? 50)
+      drawZoneLabel(ctx, ZONE_NAMES[id], zone.temperature, cf, tc)
       sd.texture.needsUpdate = true
     }
   }
@@ -487,37 +494,6 @@ function makeFloorOutline(): THREE.LineSegments {
   return new THREE.LineSegments(geo, mat)
 }
 
-// ─── Solar zone incidence ─────────────────────────────────────────────────────
-
-/**
- * Returns which building facade the artistic sun orb is currently illuminating.
- * Uses the same camera-basis formula as sunDisplayPos() so the blinking zone
- * always matches the face the sun visually appears to shine on.
- *
- * From the SE camera position the sun arc moves through world-space:
- *   - Early day  → strong −Z component → North face (nor) illuminated
- *   - Late day   → strong −X component → West face  (wes) illuminated
- *   - Crossover ≈ 13:10 when |dz| = |dx|
- * East and South faces are never directly lit from this camera orientation.
- */
-function solarIncidenceZone(hour: number): ZoneState['id'] | null {
-  const h = ((hour % 24) + 24) % 24
-  if (h < 5.5 || h > 19.5) return null
-
-  const t  = Math.max(0, Math.min(1, (h - 6) / 14))
-  const sx = Math.cos(Math.PI * t)
-  const sy = 0.42 + Math.sin(Math.PI * t) * 0.06
-
-  // World direction of the sun (same formula as sunDisplayPos, no normalisation needed for comparison)
-  const dx = _CF[0] + sy * _CU[0] + sx * 0.50 * _CR[0]
-  const dz = _CF[2] + sy * _CU[2] + sx * 0.50 * _CR[2]
-
-  // Outward normal of North face = (0,0,−1) → dot with sun dir = −dz
-  // Outward normal of West  face = (−1,0,0) → dot with sun dir = −dx
-  // The face with the higher dot product faces the sun
-  return (-dz >= -dx) ? 'nor' : 'wes'
-}
-
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useBuildingScene(
@@ -528,12 +504,12 @@ export function useBuildingScene(
   onHoverZone:     (id: string | null) => void,
   simHour?:        number,
   extTemp?:        number,   // °C — drives glass tint flash
-  humidity?:       number,   // 0–100 % — drives fog density
-  windSpeed?:      number,   // km/h — drives particle stream
 ): void {
   const activeFloor = useDashboardStore((s) => s.selectedFloor)
   const setFloor    = useDashboardStore((s) => s.setSelectedFloor)
   const selectZone  = useDashboardStore((s) => s.selectZone)
+  const cfd         = useDashboardStore((s) => s.cfdCinematic)
+  const endCfd      = useDashboardStore((s) => s.endCfd)
 
   const liveDataRef    = useRef(liveData)
   const viewModeRef    = useRef(viewMode)
@@ -545,8 +521,8 @@ export function useBuildingScene(
   const hoverIdRef     = useRef<string | null>(null)
   const simHourRef     = useRef(simHour)
   const extTempRef     = useRef(extTemp    ?? 30)
-  const humidityRef    = useRef(humidity   ?? 0)
-  const windSpeedRef   = useRef(windSpeed  ?? 0)
+  const cfdRef         = useRef<CfdCinematic | null>(cfd)
+  const endCfdRef      = useRef(endCfd)
 
   useEffect(() => { liveDataRef.current    = liveData              }, [liveData])
   useEffect(() => { viewModeRef.current    = viewMode              }, [viewMode])
@@ -557,8 +533,8 @@ export function useBuildingScene(
   useEffect(() => { onHoverRef.current     = onHoverZone           }, [onHoverZone])
   useEffect(() => { simHourRef.current     = simHour               }, [simHour])
   useEffect(() => { extTempRef.current     = extTemp   ?? 30       }, [extTemp])
-  useEffect(() => { humidityRef.current    = humidity  ?? 0        }, [humidity])
-  useEffect(() => { windSpeedRef.current   = windSpeed ?? 0        }, [windSpeed])
+  useEffect(() => { cfdRef.current         = cfd                   }, [cfd])
+  useEffect(() => { endCfdRef.current      = endCfd                }, [endCfd])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -575,14 +551,15 @@ export function useBuildingScene(
     const scene = new THREE.Scene()
     // scene.background is set via sceneBg (persistent Color) before animate()
 
-    // ── Camera — lower elevation to expose zone cross-section ──────────────
-    const camera = new THREE.PerspectiveCamera(38, 1, 0.5, 600)
-    camera.position.set(65, 40, 68)
-    camera.lookAt(0, FH, 0)
+    // ── Camera — north-side vantage looking toward the southern sky, so the
+    //    real solar arc (E→S→W) sweeps across the frame; wide-ish FOV for sky ─
+    const camera = new THREE.PerspectiveCamera(54, 1, 0.5, 600)
+    camera.position.set(30, 30, -82)
+    camera.lookAt(0, 13, 3)
 
     // ── OrbitControls ──────────────────────────────────────────────────────
     const controls = new OrbitControls(camera, canvas)
-    controls.target.set(0, FH, 0)
+    controls.target.set(0, 13, 3)
     controls.enableDamping = true
     controls.dampingFactor = 0.08
     controls.minDistance   = 35
@@ -614,28 +591,6 @@ export function useBuildingScene(
     ground.position.y = -0.15
     scene.add(ground)
 
-    // ── Atmospheric fog — density driven by humidity ──────────────────────
-    scene.fog = new THREE.FogExp2(0x020c18, 0)    // density updated each frame
-
-    // ── Wind particle stream ───────────────────────────────────────────────
-    // 250 small points that drift in the +X direction; opacity + speed ∝ windSpeed
-    const WIND_COUNT   = 250
-    const _wPos        = new Float32Array(WIND_COUNT * 3)
-    const _wSpeed      = new Float32Array(WIND_COUNT)   // per-particle variance
-    for (let i = 0; i < WIND_COUNT; i++) {
-      _wPos[i*3+0] = (Math.random() - 0.5) * 150   // spread across building + margins
-      _wPos[i*3+1] = Math.random() * 25             // 0–25 m height
-      _wPos[i*3+2] = (Math.random() - 0.5) * 100
-      _wSpeed[i]   = 0.55 + Math.random() * 0.90   // turbulence multiplier
-    }
-    const windGeo = new THREE.BufferGeometry()
-    windGeo.setAttribute('position', new THREE.BufferAttribute(_wPos, 3))
-    const windMat  = new THREE.PointsMaterial({
-      color: 0xd8eeff, size: 0.45, transparent: true, opacity: 0, depthWrite: false, sizeAttenuation: true,
-    })
-    const windPoints = new THREE.Points(windGeo, windMat)
-    scene.add(windPoints)
-
     // ── Sky dome — color driven by real wall-clock time each frame ─────────
     const skyG    = new THREE.SphereGeometry(390, 24, 12)
     const skyMat  = new THREE.MeshBasicMaterial({ color: 0x020c18, side: THREE.BackSide })
@@ -643,7 +598,7 @@ export function useBuildingScene(
     scene.add(skyMesh)
 
     // ── Sun disc ──────────────────────────────────────────────────────────
-    const sunG    = new THREE.SphereGeometry(6, 16, 8)
+    const sunG    = new THREE.SphereGeometry(9, 20, 12)
     const sunMat  = new THREE.MeshBasicMaterial({ color: 0xfffae0 })
     const sunMesh = new THREE.Mesh(sunG, sunMat)
     scene.add(sunMesh)
@@ -658,10 +613,19 @@ export function useBuildingScene(
     const sunGlow = new THREE.PointLight(0xfff0cc, 0, 600)
     scene.add(sunGlow)
 
+    // ── Post-processing: bloom so the sun + hot facades glow ───────────────
+    const composer  = new EffectComposer(renderer)
+    composer.setPixelRatio(renderer.getPixelRatio())
+    composer.addPass(new RenderPass(scene, camera))
+    const bloomPass = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.7, 0.5, 0.82)
+    composer.addPass(bloomPass)
+    composer.addPass(new OutputPass())
+
     // ── Building ───────────────────────────────────────────────────────────
     const mats = makeMaterials()
     const {
       group: building,
+      floorGroups, topGroup, wallGroups, furnitureGroups,
       zoneMeshes, zoneMeshMats, glassMats,
       slabMeshes, floorSlabMats,
     } = buildBuilding(mats)
@@ -683,7 +647,7 @@ export function useBuildingScene(
         const edgeMat = new THREE.LineBasicMaterial({ color: 0x88ccff, opacity: 0.70, transparent: true })
         const edges   = new THREE.LineSegments(edgeGeo, edgeMat)
         edges.position.set(g.cx, volY, g.cz)
-        scene.add(edges)
+        floorGroups[f]!.add(edges)   // parented to floor group → rides the exploded offset
         zoneEdges.set(`${id}_${f}`, edges)
       }
     }
@@ -698,6 +662,25 @@ export function useBuildingScene(
       scene.add(entry.sprite)
       zoneSprites.set(id, entry)
     }
+
+    // ── CFD field — one floor-wide plane textured by a CPU Euler fluid sim ────
+    //    (walls = solid cells, diffusers = cold inlets; air advects through the
+    //    doorways between zones). Hidden until a recommendation is applied.
+    const floorFluid = new FloorFluid()
+    const cfdBuf     = new Uint8Array(floorFluid.numX * floorFluid.numY * 4)
+    const cfdTex     = new THREE.DataTexture(cfdBuf, floorFluid.numX, floorFluid.numY, THREE.RGBAFormat)
+    cfdTex.magFilter = THREE.LinearFilter
+    cfdTex.minFilter = THREE.LinearFilter
+    cfdTex.needsUpdate = true
+    const cfdMat = new THREE.MeshBasicMaterial({
+      map: cfdTex, transparent: true, depthTest: false, depthWrite: false, opacity: 0,
+    })
+    const cfdPlane = new THREE.Mesh(new THREE.PlaneGeometry(BW, BD), cfdMat)
+    cfdPlane.rotation.x  = -Math.PI / 2
+    cfdPlane.rotation.z  =  Math.PI       // align texture (i,j) with world (x,z)
+    cfdPlane.renderOrder = 999
+    cfdPlane.visible     = false
+    scene.add(cfdPlane)
 
     // ── Collect zone volumes for raycasting ────────────────────────────────
     const allZoneVols: THREE.Mesh[] = []
@@ -730,9 +713,10 @@ export function useBuildingScene(
         return
       }
 
-      const hits = raycaster.intersectObjects(building.children, false)
+      const hits = raycaster.intersectObject(building, true)
       if (hits.length > 0) {
-        setFloorRef.current(Math.max(0, Math.min(NF - 1, Math.floor(hits[0].point.y / FH))))
+        const f = hits[0].object.userData['floor']
+        if (typeof f === 'number') setFloorRef.current(f)
       }
     }
 
@@ -766,6 +750,7 @@ export function useBuildingScene(
       const h = wrapper.clientHeight
       if (w > 0 && h > 0) {
         renderer.setSize(w, h, false)
+        composer.setSize(w, h)
         camera.aspect = w / h
         camera.updateProjectionMatrix()
       }
@@ -773,6 +758,7 @@ export function useBuildingScene(
     if (wrapper) ro.observe(wrapper)
     if (wrapper && wrapper.clientWidth > 0) {
       renderer.setSize(wrapper.clientWidth, wrapper.clientHeight, false)
+      composer.setSize(wrapper.clientWidth, wrapper.clientHeight)
       camera.aspect = wrapper.clientWidth / wrapper.clientHeight
       camera.updateProjectionMatrix()
     }
@@ -780,18 +766,28 @@ export function useBuildingScene(
     // ── Persistent colours (reused every frame to avoid GC pressure) ──────
     const sceneBg    = new THREE.Color(0x020c18)
     scene.background = sceneBg
-    const _coldTint  = new THREE.Color(0x4488ff)   // cold glass tint
-    const _hotTint   = new THREE.Color(0xff5500)   // hot glass tint
-    const _tempTint  = new THREE.Color()           // lerped result — reused
+    const _tempTint  = new THREE.Color()           // lerped heat color — reused
 
     // ── Animation loop ─────────────────────────────────────────────────────
     let rafId          = 0
     let pulseT         = 0
-    let prevIncidenceId: string | null = null
     let lastFrameTime  = performance.now()
     // Temperature flash state (local, not a React ref — lives with the GL scene)
     let tempFlash      = 0
     let prevExtTempGL  = extTempRef.current
+
+    // ── CFD cinematic state (lives with the GL scene) ─────────────────────
+    interface CineShot { zone: ZoneState['id'] | null; pos: THREE.Vector3; target: THREE.Vector3; dur: number }
+    interface Cine {
+      jobId: string; floor: number; shots: CineShot[]; idx: number; shotStartMs: number
+      fromPos: THREE.Vector3; fromTarget: THREE.Vector3; activated: Set<ZoneState['id']>
+    }
+    let cine:          Cine | null = null
+    let cfdPlayedId:   string | null = null
+    let cfdShownFloor: number = -1        // floor whose flow field is shown (−1 = none)
+    let cfdFadeStart:  number = 0         // ms timestamp when the field begins fading out (0 = none)
+    const _cineTarget  = new THREE.Vector3()
+    const easeInOut    = (t: number) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2)
 
     function animate(): void {
       rafId = requestAnimationFrame(animate)
@@ -806,14 +802,58 @@ export function useBuildingScene(
       const hlZone   = highlightedRef.current
       const hvZone   = hoverIdRef.current
 
-      // ── Shared sim-time / solar state (used by zones, sky, incidence, weather)
-      const _now2     = new Date()
-      const realHour  = _now2.getHours() + _now2.getMinutes() / 60 + _now2.getSeconds() / 3600
-      const hourOfDay = simHourRef.current !== undefined ? simHourRef.current : realHour
-      const { el }    = solarPosition(hourOfDay)
-      const isDaytime = el > -0.08
-      const isNight   = el < 0.05
-      const incidenceId = isDaytime ? solarIncidenceZone(hourOfDay) : null
+      // ──⓪ CFD cinematic trigger — a freshly-applied recommendation starts the
+      //    focus → flythrough → zoom-out sequence (played once per jobId) ─────
+      {
+        const job = cfdRef.current
+        if (job && job.jobId !== cfdPlayedId && cine === null && mode === '3d') {
+          cfdPlayedId = job.jobId
+          setFloorRef.current(job.floor)          // make that floor active (solid, centred)
+          const fy = job.floor * FH
+          const shots: CineShot[] = job.zoneIds.map((zid) => {
+            const g = ZONE_GEOM[zid]
+            return {
+              zone:   zid,
+              pos:    new THREE.Vector3(g.cx + 10, fy + 13, g.cz - 20),
+              target: new THREE.Vector3(g.cx, fy + 1.4, g.cz),
+              dur:    zid === job.primaryZoneId ? 1.8 : 1.4,
+            }
+          })
+          // Final shot — high-angle reveal of the whole floor's airflow field
+          shots.push({
+            zone: null,
+            pos:    new THREE.Vector3(0, fy + 30, 18),
+            target: new THREE.Vector3(0, fy + 1, 0),
+            dur:    2.2,
+          })
+          cine = {
+            jobId: job.jobId, floor: job.floor, shots, idx: 0, shotStartMs: nowMs,
+            fromPos: camera.position.clone(), fromTarget: controls.target.clone(),
+            activated: new Set<ZoneState['id']>(),
+          }
+          controls.enabled = false
+          cfdShownFloor = job.floor
+          cfdFadeStart  = 0
+          floorFluid.reset()
+          cfdPlane.visible = true
+        }
+      }
+
+      // ── Shared sim-time / solar state (used by zones, sky, facades, weather)
+      const _now2      = new Date()
+      const realHour   = _now2.getHours() + _now2.getMinutes() / 60 + _now2.getSeconds() / 3600
+      const hourOfDay  = simHourRef.current !== undefined ? simHourRef.current : realHour
+      const { el, az } = solarPosition(hourOfDay)
+      const elDisp     = Math.min(el, SUN_EL_CAP)   // capped elevation for the visible orb/light
+      const isDaytime  = el > -0.08
+      const isNight    = el < 0.05
+      // Real per-facade solar load + the dominant lit facade (for the thermal model)
+      const fLoads = facadeSolarLoads(az, el)
+      let incidenceId: ZoneState['id'] | null = null
+      let _maxLoad = 0.06
+      for (const id of ['nor', 'sou', 'eas', 'wes'] as ZoneState['id'][]) {
+        if (fLoads[id] > _maxLoad) { _maxLoad = fLoads[id]; incidenceId = id }
+      }
 
       // ① Dynamic zone temperatures — driven by ext temp, time of day, and solar incidence
       const dynTemps = computeZoneTemps(extTempRef.current, hourOfDay, incidenceId)
@@ -823,37 +863,61 @@ export function useBuildingScene(
       }
       updateZoneMats(zoneMeshMats, glassMats, dynZones, prevTemps, zoneSprites)
 
-      // ② Per-mesh opacity: active floor fully lit, other floors nearly invisible
+      // ①b Exploded floors — active floor is the reference (offset 0); the rest
+      // spread away vertically so the stack reads clearly. Collapsed in plan mode.
+      const exploded = mode === '3d'
+      const lerpK    = Math.min(1, dt * 6)
+      for (let f = 0; f < floorGroups.length; f++) {
+        const fg      = floorGroups[f]!
+        const targetY = exploded ? (f - curFloor) * EXPLODE_GAP : 0
+        fg.position.y += (targetY - fg.position.y) * lerpK
+        // Active floor swells slightly (XZ only) — "se agranda" emphasis
+        const targetS = (exploded && f === curFloor) ? 1.035 : 1.0
+        const s = fg.scale.x + (targetS - fg.scale.x) * lerpK
+        fg.scale.set(s, 1, s)
+      }
+      // Roof / AHUs ride with the top floor's exploded offset
+      {
+        const topTargetY = exploded ? (NF - 1 - curFloor) * EXPLODE_GAP : 0
+        topGroup.position.y += (topTargetY - topGroup.position.y) * lerpK
+      }
+
+      // ②₀ Dollhouse — walls + furniture shown only on the active floor
+      for (let f = 0; f < wallGroups.length; f++) {
+        const on = f === curFloor
+        wallGroups[f]!.visible      = on
+        furnitureGroups[f]!.visible = on
+      }
+
+      // ② Zone fills — active floor = faint temp tint (so walls/furniture read);
+      //    inactive floors = hidden (wireframe only)
       for (const [id, meshList] of zoneMeshes) {
         for (const mesh of meshList) {
           const mf  = mesh.userData['floor'] as number
           const mat = mesh.material as THREE.MeshPhongMaterial
           const isActive = mf === curFloor
-          const isHl     = isActive && id === hlZone
-          const isHv     = isActive && id === hvZone
-
-          if (!isActive) {
-            mat.opacity = 0.03          // near-invisible ghost
-          } else if (isHl) {
-            mat.opacity = 0.62 + 0.28 * (0.5 + 0.5 * Math.sin(pulseT))
-          } else if (isHv) {
-            mat.opacity = 0.94
-          } else {
-            mat.opacity = 0.86          // active floor — strong fill
-          }
+          if (!isActive) { mesh.visible = false; continue }
+          mesh.visible = true
+          const isHl = id === hlZone
+          const isHv = id === hvZone
+          if      (isHl) mat.opacity = 0.26 + 0.16 * (0.5 + 0.5 * Math.sin(pulseT))
+          else if (isHv) mat.opacity = 0.30
+          else           mat.opacity = 0.13   // faint air-tint over the furnished room
         }
       }
 
-      // ③ Zone edge line opacity by floor
+      // ③ Zone edges — active = crisp bright AutoCAD lines; inactive = dim steel wireframe
       for (const [key, edges] of zoneEdges) {
         const f   = parseInt(key.split('_')[1]!, 10)
         const mat = edges.material as THREE.LineBasicMaterial
-        mat.opacity = f === curFloor ? 0.80 : 0.02   // inactive edges almost gone
+        const isActive = f === curFloor
+        mat.opacity = isActive ? 0.95 : 0.32
+        mat.color.setHex(isActive ? 0xdcefff : 0x46637c)
       }
 
-      // ③b Floor slab opacity: active bright, others near-invisible
+      // ③b Floor slab opacity: active bright, inactive thin (slab edge lines keep the wireframe read)
       for (let f = 0; f < floorSlabMats.length; f++) {
-        floorSlabMats[f]!.opacity = f === curFloor ? 0.22 : 0.03
+        floorSlabMats[f]!.opacity = f === curFloor ? 0.30 : 0.06
       }
 
       // ④ Sprite labels: position above active floor, hide in plan mode
@@ -870,8 +934,12 @@ export function useBuildingScene(
       // ⑤ Floor outline tracks selected floor
       floorOutline.position.set(0, curFloor * FH + FH / 2, 0)
 
-      // ⑥ View mode
-      if (mode === 'plan') {
+      // ⑥ View mode — the CFD cinematic drives the camera directly when active
+      if (cine) {
+        camera.up.set(0, 1, 0)
+        building.visible     = true
+        floorOutline.visible = true
+      } else if (mode === 'plan') {
         // Top-down orthographic-style view: camera straight above active floor
         // camera.up = North (−Z) so North zone appears at the top of the screen
         controls.enabled = false
@@ -888,6 +956,73 @@ export function useBuildingScene(
         controls.update()
       }
 
+      // ⑥b CFD cinematic — camera keyframes (focus → flythrough → zoom out) +
+      //    flow-plane activation/animation. Runs over the GL scene's own clock.
+      if (cine) {
+        const shot = cine.shots[cine.idx]!
+        const t    = Math.min(1, (nowMs - cine.shotStartMs) / (shot.dur * 1000))
+        const te   = easeInOut(t)
+        camera.position.lerpVectors(cine.fromPos, shot.pos, te)
+        _cineTarget.lerpVectors(cine.fromTarget, shot.target, te)
+        camera.lookAt(_cineTarget)
+
+        // Open this zone's diffuser inlet on arrival (cold air starts entering)
+        if (shot.zone && !cine.activated.has(shot.zone)) {
+          cine.activated.add(shot.zone)
+          floorFluid.setInlet(shot.zone, true)
+        }
+
+        if (t >= 1) {
+          cine.idx++
+          if (cine.idx >= cine.shots.length) {
+            cine = null
+            controls.enabled = true
+            controls.target.copy(_cineTarget)
+            cfdFadeStart = nowMs + 2600         // hold the revealed field, then fade
+            endCfdRef.current()
+          } else {
+            cine.fromPos.copy(camera.position)
+            cine.fromTarget.copy(_cineTarget)
+            cine.shotStartMs = nowMs
+          }
+        }
+      }
+
+      // ⑥c Step the CPU Euler fluid + refresh the field texture on the active floor
+      if (cfdShownFloor >= 0) {
+        const offY = floorGroups[cfdShownFloor]?.position.y ?? 0
+        // Master fade: full during/just-after the cinematic, then ease out
+        let master = 0.85
+        if (cfdFadeStart > 0 && nowMs > cfdFadeStart) {
+          master = 0.85 * Math.max(0, 1 - (nowMs - cfdFadeStart) / 2000)
+        }
+        // Advance the fluid by real elapsed time (frame-rate independent spread)
+        const sub = Math.max(1, Math.min(4, Math.round(dt / (1 / 60))))
+        for (let s2 = 0; s2 < sub; s2++) floorFluid.step(1 / 60)
+        floorFluid.writeRGBA(cfdBuf)
+        cfdTex.needsUpdate = true
+        cfdPlane.position.set(0, cfdShownFloor * FH + 1.4 + offY, 0)
+        cfdMat.opacity = master
+
+        // Volumetric read — fill each active-floor zone toward cold blue by how
+        // much cold air has reached it (base → temp colour → cold, non-compounding)
+        if (cfdShownFloor === curFloor) {
+          for (const zid of ZONE_IDS) {
+            const zmat = zoneMeshMats.get(`${zid}_${curFloor}`)
+            const zone = dynZones[zid]
+            if (!zmat || !zone) continue
+            const cool = Math.min(1, floorFluid.zoneCoolness(zid)) * master
+            const tc = tempToColor(zone.temperature)
+            zmat.color.copy(BASE_ZONE).lerp(tc, 0.6).lerp(H_COLD, cool)
+            zmat.opacity = Math.max(zmat.opacity, 0.13 + cool * 0.5)
+          }
+        }
+        if (master <= 0.001) {
+          cfdPlane.visible = false
+          if (cine === null) { cfdShownFloor = -1; cfdFadeStart = 0; prevTemps.clear() }
+        }
+      }
+
       // ⑦ Solar / sky simulation (hourOfDay / isDaytime / isNight computed above)
       {
         // Sky dome + background colour (mutates sceneBg in-place — no allocation)
@@ -902,95 +1037,68 @@ export function useBuildingScene(
         hemiLight.color.copy(skyColor)
         hemiLight.intensity = isDaytime ? 1.0 : 0.25
 
-        // Sun orb — camera-aligned arc so it appears in the visible upper sky
-        sunMesh.visible = isDaytime
-        if (isDaytime) {
-          const sp = sunDisplayPos(hourOfDay, 300)
+        // Sun orb — real azimuth arc (east → south → west) with capped elevation
+        // so the disc stays in the visible sky band; bloomed via post-fx
+        sunMesh.visible = el > -0.05
+        if (sunMesh.visible) {
+          const sp = sunWorldDir(az, elDisp).multiplyScalar(280)
           sunMesh.position.copy(sp)
           sunMat.color.copy(sunColorFromEl(el))
           keyLight.position.copy(sp)
-          keyLight.intensity = Math.max(0.05, Math.sin(Math.max(0, el)) * 1.8)
+          keyLight.intensity = Math.max(0.04, Math.sin(Math.max(0, el)) * 2.1)
           keyLight.color.copy(sunColorFromEl(el))
           sunGlow.position.copy(sp)
           sunGlow.color.copy(sunColorFromEl(el))
-          sunGlow.intensity = Math.max(0, Math.sin(Math.max(0, el))) * 0.6
+          sunGlow.intensity = Math.max(0, Math.sin(Math.max(0, el))) * 0.7
         } else {
-          keyLight.intensity = 0.05
+          keyLight.intensity = 0.04
           sunGlow.intensity  = 0
         }
 
-        // Moon orb — visible arc during night hours
+        // Moon orb — simple east→west night arc
         moonMesh.visible = isNight
         if (isNight) {
-          const mp = moonDisplayPos(hourOfDay, 300)
-          moonMesh.position.copy(mp)
-          sunGlow.position.copy(mp)
+          const h24    = ((hourOfDay % 24) + 24) % 24
+          const nightT = Math.max(0, Math.min(1, h24 >= 20 ? (h24 - 20) / 10 : (h24 + 4) / 10))
+          const mAz    = Math.PI * 0.5 + nightT * Math.PI            // E → W
+          const mEl    = Math.sin(nightT * Math.PI) * 0.7
+          moonMesh.position.copy(sunWorldDir(mAz, mEl).multiplyScalar(330))
+          sunGlow.position.copy(moonMesh.position)
           sunGlow.color.set(0xb8c8d8)
-          sunGlow.intensity = 0.12
+          sunGlow.intensity = 0.14
         }
 
-        // ⑧ Solar zone incidence — orange pulse on sun-facing facade
-        if (incidenceId !== prevIncidenceId) {
-          if (prevIncidenceId) {
-            const prevZone = liveDataRef.current.zones[prevIncidenceId as ZoneState['id']]
-            if (prevZone) {
-              const tc = tempToColor(prevZone.temperature)
-              for (let f = 0; f < NF; f++) {
-                const mat = zoneMeshMats.get(`${prevIncidenceId}_${f}`)
-                if (mat) mat.emissive.copy(tc).multiplyScalar(0.14)
-              }
-            }
-          }
-          prevIncidenceId = incidenceId
-        }
-        if (incidenceId) {
-          const blinkI = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(pulseT * 0.8))
-          for (let f = 0; f < NF; f++) {
-            const mat = zoneMeshMats.get(`${incidenceId}_${f}`)
-            if (mat) mat.emissive.setRGB(blinkI * 0.65, blinkI * 0.14, 0)
-          }
-        }
-
-        // ⑨ Humidity → atmospheric fog density (lerps smoothly on value change)
-        const fogTarget  = humidityRef.current * 0.00013  // 0 % = clear, 100 % = thick
-        const fogInst    = scene.fog as THREE.FogExp2
-        fogInst.density += (fogTarget - fogInst.density) * Math.min(1, dt * 2.0)
-        fogInst.color.copy(skyColor)
-
-        // ⑩ Temperature → glass facade tint + flash on value change
+        // ⑧ Facade solar impact + heat transfer
+        // Each perimeter facade's glass glows blue→amber→red by (ambient air +
+        // direct sun), and the active-floor zone behind the sunniest facade warms
+        // — reads as solar radiation landing and heat moving inward.
         {
           const et = extTempRef.current
           if (Math.abs(et - prevExtTempGL) > 0.4) { tempFlash = 1.0; prevExtTempGL = et }
-          tempFlash = Math.max(0, tempFlash - dt * 0.55)        // decay over ~1.8 s
+          tempFlash = Math.max(0, tempFlash - dt * 0.55)            // decay ~1.8 s
+          const flashI = Math.sin(tempFlash * Math.PI) * 0.5
+          const ambN   = Math.max(0, Math.min(1, (et - 15) / 40))   // ambient warmth 0..1
+          const pulse  = 0.78 + 0.22 * (0.5 + 0.5 * Math.sin(pulseT * 0.9))
 
-          const tNorm   = Math.max(0, Math.min(1, (et - 15) / 40))  // 0 at 15°C → 1 at 55°C
-          const flashI  = Math.sin(tempFlash * Math.PI) * 0.55       // bell-curve peak
-          const baseGlow = Math.abs(et - 24) / 80                    // subtle persistent tint
-          _tempTint.lerpColors(_coldTint, _hotTint, tNorm)
-          for (const [, gmat] of glassMats) {
-            gmat.emissive.copy(_tempTint).multiplyScalar(flashI + baseGlow)
+          for (const id of ['nor', 'sou', 'eas', 'wes'] as ZoneState['id'][]) {
+            const load = fLoads[id]
+            const heat = Math.max(0, Math.min(1, ambN * 0.5 + load * 0.9))
+            heatToColor(heat, _tempTint)
+
+            // Glass facade emissive — brighter where the sun hits square-on
+            const gmat = glassMats.get(id)
+            if (gmat) {
+              const inten = 0.10 + heat * 0.5 + load * 0.35 * pulse + flashI * 0.4
+              gmat.emissive.copy(_tempTint).multiplyScalar(inten)
+            }
+            // Heat transfer inward — active-floor perimeter zone warms with sun load
+            const zmat = zoneMeshMats.get(`${id}_${curFloor}`)
+            if (zmat) zmat.emissive.copy(_tempTint).multiplyScalar(0.08 + load * 0.5 * pulse)
           }
         }
       }
 
-      // ⑪ Wind particles — stream in +X direction, speed ∝ windSpeed
-      {
-        const kmh  = windSpeedRef.current
-        const mps  = kmh / 3.6
-        windMat.opacity = Math.min(0.60, kmh * 0.009)
-        if (mps > 0.2) {
-          const wBuf = windGeo.attributes['position'] as THREE.BufferAttribute
-          const wArr = wBuf.array as Float32Array
-          for (let i = 0; i < WIND_COUNT; i++) {
-            wArr[i*3+0] += mps * _wSpeed[i] * dt * 8   // particle drift in +X
-            wArr[i*3+1] += Math.sin(pulseT + i * 0.6) * 0.008  // vertical shimmer
-            if (wArr[i*3+0] > 75) wArr[i*3+0] -= 150            // wrap around
-          }
-          wBuf.needsUpdate = true
-        }
-      }
-
-      renderer.render(scene, camera)
+      composer.render()
     }
 
     animate()
@@ -1025,6 +1133,11 @@ export function useBuildingScene(
         entry.sprite.material.dispose()
       })
 
+      // CFD field plane + texture
+      cfdPlane.geometry.dispose()
+      cfdMat.dispose()
+      cfdTex.dispose()
+
       // Extra structural materials (dispose once more; idempotent in Three.js)
       Object.values(mats).forEach((m) => m.dispose())
       floorSlabMats.forEach((m) => m.dispose())
@@ -1034,7 +1147,7 @@ export function useBuildingScene(
       skyG.dispose();    skyMat.dispose()
       sunG.dispose();    sunMat.dispose()
       moonG.dispose();   moonMat.dispose()
-      windGeo.dispose(); windMat.dispose()
+      composer.dispose()
       renderer.dispose()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps

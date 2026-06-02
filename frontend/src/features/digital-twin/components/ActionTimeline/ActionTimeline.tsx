@@ -23,25 +23,25 @@ const MOCK_NODES: TimelineNode[] = [
   },
   {
     id: 'a73d9e2',
-    shortLabel: 'Chiller staging optimized',
-    description: 'Adjusted central chiller sequence to prioritise higher-COP units during peak morning ramp-up. Reduced chiller cycling by 34%.',
-    impact: '↓ 420 kWh/day',
+    shortLabel: 'Morning pull-down rescheduled',
+    description: 'MPC shifted the guestroom-block pull-down 40 min later using the temperature forecast — zones still reached setpoint before occupancy, with less morning-ramp cooling.',
+    impact: '↓ 210 kWh/day',
     author: 'Applied · 08:30',
     type: 'historical'
   },
   {
     id: 'f92ca1b',
-    shortLabel: 'Static pressure reset',
-    description: 'Lowered duct static pressure setpoint by 0.5 inWC across all AHUs based on high VAV damper positions — fan energy reduced.',
-    impact: '↓ 185 kWh/day',
+    shortLabel: 'Overcooling corrected — Core',
+    description: 'MPC raised the core cooling setpoint 1.5°C after the comfort model confirmed PMV stayed within band — removed sustained overcooling.',
+    impact: '↓ 120 kWh/day',
     author: 'Applied · 10:15',
     type: 'historical'
   },
   {
     id: 'sim-1',
-    shortLabel: 'OA damper float — F&B Lounge',
-    description: 'Outside air damper 30% above IAQ minimum — CO₂ stable at 420 ppm, threshold 800 ppm. Recommendation to reduce to 45%.',
-    impact: '↓ 28 kWh/day · AED 3,271/yr',
+    shortLabel: 'Night setback — F&B Lounge',
+    description: 'Occupancy forecast shows the lounge empty after 23:00. MPC applies a 2.5°C night setback on the cooling setpoint until a scheduled morning pull-down before opening.',
+    impact: '↓ 33 kWh/day · AED 3,860/yr',
     author: 'Pending Simulation',
     type: 'simulated'
   }

@@ -1,0 +1,135 @@
+/* ── Compact BMS / HMI faceplate (dark SCADA look) ───────────────────────── */
+.bms {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  background: linear-gradient(180deg, #0f151b 0%, #131a21 100%);
+  border-bottom: 1px solid rgba(120, 150, 175, 0.16);
+  font-family: var(--font-mono);
+}
+
+.bms-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.bms-unit {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #cfe0ee;
+}
+.bms-status {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 2px 7px;
+  border-radius: 3px;
+}
+.bms-status--ok {
+  color: #4fd6a0;
+  background: rgba(55, 201, 138, 0.12);
+  border: 0.5px solid rgba(55, 201, 138, 0.4);
+}
+.bms-loc {
+  margin-left: auto;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  color: #5f7488;
+}
+
+/* ── Air-handling schematic strip ─────────────────────────────────────────── */
+.bms-flow {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
+.bms-stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 7px 6px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 0.5px solid rgba(120, 150, 175, 0.18);
+  border-left-width: 3px;
+}
+.bms-stage--hot  { border-left-color: #ef6a4d; }
+.bms-stage--ok   { border-left-color: #5aa0c0; }
+.bms-stage--cool { border-left-color: #4c8bff; }
+.bms-stage--on   { border-left-color: #4fd6a0; }
+
+.bms-stage-k {
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #7d93a6;
+}
+.bms-stage-v {
+  font-size: 13px;
+  font-weight: 700;
+  color: #eaf2f9;
+  line-height: 1.1;
+}
+.bms-stage-t {
+  font-size: 8px;
+  color: #5f7488;
+  letter-spacing: 0.02em;
+}
+.bms-arrow {
+  align-self: center;
+  color: #46627c;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* ── Footer: setpoint move + live values ──────────────────────────────────── */
+.bms-foot {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.bms-sp {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 10px;
+  border-radius: 5px;
+  background: rgba(76, 139, 255, 0.10);
+  border: 0.5px solid rgba(76, 139, 255, 0.30);
+}
+.bms-sp-lbl {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #8fb0d8;
+}
+.bms-sp-cur { font-size: 13px; font-weight: 700; color: #9fb2c4; }
+.bms-sp-arrow { color: #6f8aa6; font-weight: 700; }
+.bms-sp-rec { font-size: 14px; font-weight: 800; color: #4fd6a0; }
+
+.bms-vals {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-left: auto;
+}
+.bms-val {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.bms-val-k {
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #6f8498;
+}
+.bms-val-v {
+  font-size: 13px;
+  font-weight: 700;
+  color: #dce7f1;
+}

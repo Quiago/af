@@ -5,9 +5,11 @@ import { DigitalTwinView } from '../digital-twin/components/DigitalTwinView/Digi
 import { BuildingViewer } from '../digital-twin/components/BuildingViewer/BuildingViewer'
 import { SimulationDeltas } from '../digital-twin/components/SimulationDeltas/SimulationDeltas'
 import { DebugTimelines } from '../digital-twin/components/DebugTimelines/DebugTimelines'
+import { BmsStrip } from './components/BmsStrip/BmsStrip'
 import { useDashboardStore } from '../../store/dashboardStore'
 import { useDigitalTwinData } from '../digital-twin/hooks/useDigitalTwinData'
 import type { SimulationProjection, SimZoneId } from '../digital-twin/types/simulation.types'
+import type { ZoneState } from '../digital-twin/types/digitalTwin.types'
 import './DashboardPage.css'
 
 // ─── Compact rec card shown inside the simulation twin column ─────────────────
@@ -108,7 +110,17 @@ export function DashboardPage() {
             </div>
           </>
         }
-        timelinesPanel={<DebugTimelines projection={simulationProjection} />}
+        timelinesPanel={
+          <div className="sim-right-stack">
+            <BmsStrip
+              projection={simulationProjection}
+              zone={affectedZoneId ? (liveData.zones[affectedZoneId as ZoneState['id']] ?? null) : null}
+            />
+            <div className="sim-charts">
+              <DebugTimelines projection={simulationProjection} />
+            </div>
+          </div>
+        }
       />
     )
   }

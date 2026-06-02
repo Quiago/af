@@ -27,7 +27,7 @@
   min-height: 0;
 }
 
-/* Right — streaming timeline charts (takes all remaining space) */
+/* Right — BMS strip (top) + streaming charts (fill) */
 .sim-col-timelines {
   flex: 1;
   display: flex;
@@ -35,4 +35,20 @@
   min-width: 0;
   overflow: hidden;
   background: #171D23;
+}
+
+.sim-right-stack {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.sim-charts {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;   /* stack so the single child stretches to full width */
+  overflow: hidden;
 }

@@ -6,8 +6,10 @@
  *  - Next 60 min baseline forecast (what happens WITHOUT the recommendation)  — PRIMARY only
  *  - Next 60 min simulated forecast (what happens WITH the recommendation applied)
  *
- * All data is pre-generated once when the projection mounts — static forecast,
- * no streaming. Range selection lets the engineer ask AI about specific windows.
+ * The forecast is pre-computed once when the projection mounts, then the
+ * simulated line is *streamed in* — drawn point by point across the 60-min
+ * window so the panel feels live rather than static. Range selection lets the
+ * engineer ask AI about specific windows.
  */
 import { useEffect, useRef, useState, useMemo } from 'react'
 import {
@@ -16,6 +18,7 @@ import {
   TickMarkType,
   LineStyle,
   type IChartApi,
+  type ISeriesApi,
 } from 'lightweight-charts'
 import type { SimulationProjection, DebugMetricKey } from '../../types/simulation.types'
 import './DebugTimelines.css'
@@ -38,6 +41,7 @@ const HIST_STEPS = 6    // 30 min history  (6 × 5-min)
 const FORE_STEPS = 12   // 60 min forecast (12 × 5-min)
 const STEP_S     = 300  // 5 minutes in seconds
 const LAMBDA     = 0.00038  // ~74% toward target at T=60 min
+const STREAM_MS  = 95   // delay between revealing each simulated forecast point
 
 // Hotel floor AHU: 22 kW fan motor; guestroom setpoint 22 °C; unoccupied CO₂ ~430 ppm
 const BASE: Record<DebugMetricKey, { base: number; amp: number; noise: number }> = {
@@ -162,12 +166,17 @@ interface SingleChartProps {
 function SingleDebugChart({ metricKey, label, unit, color, isPrimary, kpiDeltas }: SingleChartProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef     = useRef<IChartApi | null>(null)
+  const simSeriesRef = useRef<ISeriesApi<'Line'> | null>(null)
 
   // Range-pick state: refs for inside the chart event handler, state for render
   const pickStepRef   = useRef<'start' | 'end' | null>(null)
   const rangeStartRef = useRef<number | null>(null)
   const [pickStep, setPickStep]           = useState<'start' | 'end' | null>(null)
   const [selectedRange, setSelectedRange] = useState<{ start: number; end: number } | null>(null)
+
+  // Streaming state: how many simulated points have been revealed + done flag
+  const [reveal, setReveal]       = useState(0)
+  const [streaming, setStreaming] = useState(true)
 
   // Generate forecast data once per mount (projection is stable while mounted)
   const { historyPts, baselinePts, simPts } = useMemo(
@@ -176,10 +185,13 @@ function SingleDebugChart({ metricKey, label, unit, color, isPrimary, kpiDeltas 
   )
 
   const precision  = metricKey === 'fan_power' ? 0 : 1
-  const endSimVal  = simPts[simPts.length - 1]?.value ?? null
-  const endBasVal  = baselinePts[baselinePts.length - 1]?.value ?? null
-  const deltaVal   = isPrimary && endSimVal !== null && endBasVal !== null ? endSimVal - endBasVal : null
-  const deltaStr   = deltaVal !== null
+  const finalSimVal = simPts[simPts.length - 1]?.value ?? null
+  const endBasVal   = baselinePts[baselinePts.length - 1]?.value ?? null
+  // Live value tracks the streaming head; falls back to the start of the forecast
+  const liveSimVal  = reveal > 0 ? (simPts[reveal - 1]?.value ?? null)
+                                 : (simPts[0]?.value ?? null)
+  const deltaVal    = isPrimary && finalSimVal !== null && endBasVal !== null ? finalSimVal - endBasVal : null
+  const deltaStr    = deltaVal !== null
     ? `${deltaVal > 0 ? '+' : ''}${deltaVal.toFixed(precision)} ${unit}`
     : null
 
@@ -188,6 +200,8 @@ function SingleDebugChart({ metricKey, label, unit, color, isPrimary, kpiDeltas 
 
     const chart = createChart(containerRef.current, chartOptions())
     chartRef.current = chart
+
+    const simData = simPts.map((p) => ({ time: p.time as unknown as string, value: p.value }))
 
     // 1 — History (dim, solid)
     const histS = chart.addSeries(LineSeries, {
@@ -210,16 +224,31 @@ function SingleDebugChart({ metricKey, label, unit, color, isPrimary, kpiDeltas 
       baseS.setData(baselinePts.map((p) => ({ time: p.time as unknown as string, value: p.value })))
     }
 
-    // 3 — Simulated forecast (solid, color)
+    // 3 — Simulated forecast (solid, color) — streamed in below
     const simS = chart.addSeries(LineSeries, {
       color,
       lineWidth:        2,
       lastValueVisible: true,
       priceLineVisible: false,
     })
-    simS.setData(simPts.map((p) => ({ time: p.time as unknown as string, value: p.value })))
+    simSeriesRef.current = simS
 
+    // Establish the full 60-min time range up front, then rewind the sim line so
+    // it can be drawn point by point without the x-axis jumping as it grows.
+    simS.setData(simData)
     chart.timeScale().fitContent()
+    simS.setData(simData.slice(0, 1))
+
+    let i = 1
+    const streamId = window.setInterval(() => {
+      i += 1
+      simS.setData(simData.slice(0, i))
+      setReveal(i)
+      if (i >= simData.length) {
+        window.clearInterval(streamId)
+        setStreaming(false)
+      }
+    }, STREAM_MS)
 
     // Range selection via chart clicks
     chart.subscribeClick((param) => {
@@ -240,8 +269,10 @@ function SingleDebugChart({ metricKey, label, unit, color, isPrimary, kpiDeltas 
     })
 
     return () => {
+      window.clearInterval(streamId)
       chart.remove()
       chartRef.current = null
+      simSeriesRef.current = null
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -266,9 +297,9 @@ function SingleDebugChart({ metricKey, label, unit, color, isPrimary, kpiDeltas 
     const msg = [
       `[Forecast analysis · ${label}]`,
       `Time range: ${fmt(selectedRange.start)} → ${fmt(selectedRange.end)}.`,
-      isPrimary && endBasVal !== null && endSimVal !== null
-        ? `Baseline end: ${endBasVal.toFixed(precision)} ${unit}. Simulated end: ${endSimVal.toFixed(precision)} ${unit}.`
-        : `Simulated end: ${endSimVal?.toFixed(precision) ?? '—'} ${unit}.`,
+      isPrimary && endBasVal !== null && finalSimVal !== null
+        ? `Baseline end: ${endBasVal.toFixed(precision)} ${unit}. Simulated end: ${finalSimVal.toFixed(precision)} ${unit}.`
+        : `Simulated end: ${finalSimVal?.toFixed(precision) ?? '—'} ${unit}.`,
       `What does this segment tell us about the recommendation impact?`,
     ].filter(Boolean).join(' ')
     window.dispatchEvent(new CustomEvent('inaia:ask', { detail: { message: msg } }))
@@ -284,10 +315,11 @@ function SingleDebugChart({ metricKey, label, unit, color, isPrimary, kpiDeltas 
           <span className="dbt-chart-label" style={{ color }}>{label}</span>
         </div>
         <div className="dbt-chart-right">
-          {endSimVal !== null && (
+          {liveSimVal !== null && (
             <span className="dbt-sim-val" style={{ color }}>
-              {endSimVal.toFixed(precision)}&nbsp;{unit}
-              {deltaStr && (
+              {streaming && <span className="dbt-stream-dot" style={{ background: color }} />}
+              {liveSimVal.toFixed(precision)}&nbsp;{unit}
+              {!streaming && deltaStr && (
                 <span className={`dbt-delta ${(deltaVal ?? 0) < 0 ? 'dbt-delta--down' : 'dbt-delta--up'}`}>
                   &nbsp;{deltaStr}
                 </span>

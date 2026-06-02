@@ -1,3 +1,7 @@
+### 2026-06-02 FEAT — Forecasting charts: stream the simulated forecast line in (live draw)
+- What: DebugTimelines no longer paints the simulated forecast as a finished static line — it pre-computes the 60-min forecast, fixes the time axis, then reveals the simulated series point by point (~95 ms/step) so each chart "draws" left-to-right. While drawing, the header shows a pulsing dot + the live running value; on completion the vs-baseline delta badge appears. The interval is cleared on unmount and re-runs whenever the recommendation changes
+- Why: The post-Simulate charts looked pre-baked/fake; streaming the line makes the forecast feel like it's actually computing/happening
+
 ### 2026-06-02 FEAT — Forecasting panel: BMS/HMI equipment strip + full-width chart layout
 - What: Added a compact BMS faceplate (new BmsStrip) atop the simulation-mode right column — a FAHU operator HMI showing the air-handling schematic (OA → FILT → COIL → FAN → SA) with live tones, the cooling setpoint move (current → recommended), and key live values (return air, OA damper, zone CO₂) derived from the recommendation + zone state. Wired it into DashboardPage's timelinesPanel via a new .sim-right-stack/.sim-charts wrapper and fixed the chart area to fill full width (.sim-charts is now a column flex so the single DebugTimelines child stretches across, removing the empty dark gutter)
 - Why: The post-Simulate forecasting panel felt static/fake; a balanced BMS strip + full-width forecast charts makes it read like a real building-management what-if without overloading the view
